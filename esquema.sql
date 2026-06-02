@@ -41,8 +41,8 @@ CREATE TABLE comunidade_tradicional (
 
     CONSTRAINT fk_comunidade_tradicional_zona
         FOREIGN KEY (unidade_conservacao, nro_zona) REFERENCES zona (unidade_conservacao, nro_zona)
-        ON DELETE RESTRICT,
-
+        ON DELETE RESTRICT -- Adicionar um trigger para verificar se a unidade de conservação é do tipo 'USO SUSTENTAVEL'
+    
     -- CONSTRAINT ck_comunidade_tradicional_tipo 
     --    CHECK (UPPER(tipo_comunidade) IN (''))
 );
@@ -132,10 +132,14 @@ CREATE TABLE visita (
         FOREIGN KEY (guia) REFERENCES funcionario (nro_funcional)
         ON DELETE SET NULL,
 
+    CONSTRAINT ck_visita_nro_visitantes
+        CHECK (nro_visitantes >= 0);
+
     CONSTRAINT ck_visita_tipo
         CHECK (UPPER(tipo) IN ('EDUCATIVA', 'CIENTIFICA', 'TURISTICA'))
 
     -- Talvez fazer um trigger para incrementar automaticamente nro_visitantes 
+    -- O guia deve trabalhar na UC onde ocorre a visita
 );
 
 CREATE TABLE visita_visitante (
