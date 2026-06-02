@@ -177,6 +177,9 @@ CREATE TABLE visita (
         FOREIGN KEY (guia) REFERENCES funcionario (nro_funcional)
         ON DELETE SET NULL,
 
+    CONSTRAINT ck_visita_nro_visitantes
+        CHECK (nro_visitantes >= 0);
+
     CONSTRAINT ck_visita_tipo
         CHECK (UPPER(tipo) IN ('EDUCATIVA', 'CIENTIFICA', 'TURISTICA')),
 
@@ -184,6 +187,7 @@ CREATE TABLE visita (
         CHECK (nro_visitantes >= 0)
 
     -- TODO: trigger para incrementar automaticamente nro_visitantes 
+    -- O guia deve trabalhar na UC onde ocorre a visita
 );
 
 CREATE TABLE visita_visitante (
