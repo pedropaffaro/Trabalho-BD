@@ -6,6 +6,7 @@ Este projeto foi desenvolvido no contexto da disciplina SCC0240 - Bases de Dados
 
 | Discente | NUSP |
 | -- | -- |
+| Henrique Vieira Lima | 15459372 |
 | João Gabriel Pieroli da Silva | 15678578 |
 | Luysa de Souza Gonçalves | 15474077 |
 | Pedro Augusto Ferraro Paffaro | 15483380 |
