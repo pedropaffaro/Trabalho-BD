@@ -103,19 +103,18 @@ impl App {
             should_quit: false,
         };
 
-        app.fetch_units();
+        let _ = app.fetch_units();
         app.status = "Bem vindo ao Sistema de Gestão de Unidades de Conservação! :D".into();
 
         app
     }
 
-    pub fn fetch_units(&mut self) -> usize {
-        let mut count: usize = 0;
-
+    pub fn fetch_units(&mut self) -> Result<usize, String> {
         match api::list_unidades(&self.filters) {
             Ok(units) => {
-                count = units.len();
+                let count = units.len();
                 self.units = units;
+
                 if count == 0 {
                     self.table_state.select(None);
                     self.status = "Nenhuma unidade encontrada.".into();
@@ -124,15 +123,17 @@ impl App {
                     self.status =
                         format!("{count} unidade(s) encontrada(s). [Esc] Calcelar filtro");
                 }
+
+                Ok(count)
             }
             Err(e) => {
                 self.units.clear();
                 self.table_state.select(None);
                 self.status = format!("Erro: {e}");
+
+                Err(e)
             }
         }
-
-        count
     }
 
     fn reset_filter(&mut self) {
@@ -144,7 +145,7 @@ impl App {
         };
 
         self.screen = Screen::List;
-        self.fetch_units();
+        let _ = self.fetch_units();
 
         if self.units.is_empty() {
             return;
@@ -176,12 +177,17 @@ impl App {
             }
             KeyCode::Char('r') => {
                 self.status = "Atualizando...".into();
-                let count = self.fetch_units();
-
-                if count == 0 {
-                    self.status = "Nenhuma unidade encontrada.".into();
-                } else {
-                    self.status = format!("{count} unidade(s) encontrada(s).");
+                match self.fetch_units() {
+                    Ok(count) => {
+                        if count == 0 {
+                            self.status = "Nenhuma unidade encontrada.".into();
+                        } else {
+                            self.status = format!("{count} unidade(s) encontrada(s).");
+                        }
+                    }
+                    Err(e) => {
+                        self.status = format!("Erro ao atualizar: {e}");
+                    }
                 }
             }
             KeyCode::Esc => {
@@ -264,7 +270,7 @@ impl App {
         match api::create_unidade(&payload) {
             Ok(u) => {
                 self.screen = Screen::List;
-                self.fetch_units();
+                let _ = self.fetch_units();
                 self.status = format!("Unidade '{}' criada com sucesso!", u.cnuc);
             }
             Err(e) => {
@@ -295,15 +301,23 @@ impl App {
             orgao_gestor: self.filter.val(2),
             data_criacao: self.filter.val(3),
         };
-        self.screen = Screen::List;
         self.status = "Buscando...".into();
 
-        let count = self.fetch_units();
-
-        if count == 0 {
-            self.status = "Nenhuma unidade encontrada.".into();
-        } else {
-            self.status = format!("{count} unidade(s) encontrada(s). [Esc] - Cancelar busca");
+        match self.fetch_units() {
+            Ok(count) => {
+                if count == 0 {
+                    self.status = "Nenhuma unidade encontrada.".into();
+                } else {
+                    self.status =
+                        format!("{count} unidade(s) encontrada(s). [Esc] - Cancelar busca");
+                }
+            }
+            Err(e) => {
+                self.status = format!("Erro ao atualizar: {e}");
+                return;
+            }
         }
+
+        self.screen = Screen::List;
     }
 }

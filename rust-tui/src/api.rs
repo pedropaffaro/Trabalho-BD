@@ -54,6 +54,11 @@ pub struct FilterParams {
 
 fn extract_error(body: &str, use_msg: bool) -> String {
     #[derive(Deserialize)]
+    struct PydanticErrorDetail {
+        msg: String,
+    }
+
+    #[derive(Deserialize)]
     struct ApiError {
         msg: Option<serde_json::Value>,
         detail: Option<serde_json::Value>,
@@ -61,10 +66,22 @@ fn extract_error(body: &str, use_msg: bool) -> String {
 
     serde_json::from_str::<ApiError>(body)
         .ok()
-        .and_then(|e| if use_msg { e.msg } else { e.detail })
-        .map(|value| match value {
-            serde_json::Value::String(s) => s,
-            v => v.to_string(),
+        .and_then(|e| {
+            if use_msg {
+                e.detail
+                    .and_then(|v| serde_json::from_value::<Vec<PydanticErrorDetail>>(v).ok())
+                    .and_then(|list| list.into_iter().next()) // .next() em iterator consome o primeiro item (equivalente ao .first())
+                    .map(|err| err.msg)
+                    .or(match e.msg {
+                        Some(serde_json::Value::String(s)) => Some(s),
+                        _ => None,
+                    })
+            } else {
+                e.detail.map(|detail_val| match detail_val {
+                    serde_json::Value::String(s) => s,
+                    v => v.to_string(),
+                })
+            }
         })
         .unwrap_or_else(|| body.to_string())
 }
