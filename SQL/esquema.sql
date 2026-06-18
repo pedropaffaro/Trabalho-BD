@@ -5,7 +5,7 @@ CREATE TABLE unidade_conservacao (
     bioma           varchar(30) ,
     endereco        varchar(255),
     orgao_gestor    varchar(100),
-    area_total      numeric(10, 2) DEFAULT 0.00 NOT NULL, 
+    area_total      numeric(10, 2) DEFAULT 0.00, 
     -- TODO: criar um trigger para fazer o calculo automático
 
     CONSTRAINT pk_unidade_conservacao 
