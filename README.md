@@ -14,8 +14,8 @@ Este projeto foi desenvolvido no contexto da disciplina SCC0240 - Bases de Dados
 
 
 ## Dependências
-
-* **Linguagem Principal:** Python (v3.11+)
+* **User Interface:** [Rust](https://rust-lang.org/pt-BR/tools/install/) (v1.96)
+* **Linguagem Principal:** [Python](https://www.python.org/downloads/) (v3.11+)
 * **Framework Web:** [FastAPI](https://fastapi.tiangolo.com/) (Desenvolvimento de APIs rápidas e assíncronas)
 * **Driver de Banco de Dados:** [asyncpg](https://github.com/MagicStack/asyncpg) (Cliente PostgreSQL assíncrono de alta performance)
 * **Validação de Dados:** [Pydantic](https://docs.pydantic.dev/) (Modelagem e tipagem de dados)
@@ -74,7 +74,7 @@ docker compose -p trabalho_bd --env-file ./backend/.env up -d --build
 Caso queira derrubar os containeres, utilize:
 
 ```bash
-	docker compose -p trabalho_bd down
+docker compose -p trabalho_bd down
 ```
 
 > É preferível utilizar o comando `make down` caso o `Makefile` esteja instalado.
@@ -82,8 +82,8 @@ Caso queira derrubar os containeres, utilize:
 Você também pode reinicilizar a aplicação (quando fizer mudanças no código, por exemplo), a partir de:
 
 ```bash
-	docker compose -p trabalho_bd down
-	docker compose -p trabalho_bd --env-file ./backend/.env up -d --build
+docker compose -p trabalho_bd down
+docker compose -p trabalho_bd --env-file ./backend/.env up -d --build
 ```
 
 > É preferível utilizar o comando `make restart` caso o `Makefile` esteja instalado.
@@ -106,13 +106,46 @@ docker compose -p trabalho_bd logs -f backend
 
 > É preferível utilizar o comando `make logs-backend`, que executa esse trecho mais facilmente.
 
-### 4. Acessar o banco
+### 4. Popular o Banco com Dados de Teste
+
+Para inserir os dados de teste e popular o banco de dados execute o comando:
+
+```bash
+# Insere os registros nas tabelas do banco
+docker compose -p trabalho_bd exec -T db sh -c 'psql -U pessoa -d trabalho_bd' < SQL/dados.sql
+```
+
+> É preferível utilizar o comando `make ingest`, que executa esse trecho mais facilmente.
+
+### 5. Acessar o banco
 
 Para acessar o banco, você pode dar o comando:
 
 ```bash
-make psql
+docker compose -p trabalho_bd exec db sh -c 'psql -U pessoa -d trabalho_bd'
 ```
+
+> É preferível utilizar o comando `make psql`, que executa esse trecho mais facilmente. 
+
+## Como Iniciar a Interface via Terminal
+
+## Ambiente
+
+Navegue até o diretório interno _/interface_ contido na raiz do projeto:
+
+```bash
+cd interface
+```
+
+Dentro dele, execute os dois comandos:
+```bash
+#baixa as dependências e compila o projeto
+cargo build
+
+#executa o projeto
+cargo run
+```
+Para finalizar, apenas utilize o comando _Cntl + C_.
 
 ## Como Usar a API
 
