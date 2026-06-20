@@ -28,10 +28,10 @@ bash-front: ## Abre o terminal interativo dentro do interface
 	docker compose -p $(PROJECT) exec interface sh
 
 logs-backend: ## Mostra os logs apenas do contêiner backend
-	docker compose -p $(PROJECT) logs -f backend
+	docker compose -p $(PROJECT) logs -f backend-bd
 
 bash-backend: ## Abre o terminal (bash) interativo dentro do backend
-	docker compose -p $(PROJECT) exec backend sh
+	docker compose -p $(PROJECT) exec backend-bd sh
 
 psql: ## Acessa o banco de dados PostgreSQL via CLI usando as variáveis do .env
 	docker compose -p $(PROJECT) exec db sh -c 'psql -U $$DB_USER -d $$DB_NAME'

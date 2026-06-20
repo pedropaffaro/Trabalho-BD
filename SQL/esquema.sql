@@ -18,8 +18,11 @@ CREATE TABLE unidade_conservacao (
     CONSTRAINT ck_area_total 
         CHECK (area_total >= 0),
 
+    CONSTRAINT ck_uf
+        CHECK (UPPER(uf) IN ('AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO')),
+
     CONSTRAINT ck_km_valido 
-        CHECK (km >= 0 AND km < 1000)
+        CHECK (km >= 0 AND km < 10000)
 );
 
 
@@ -35,7 +38,7 @@ CREATE TABLE zona (
 
     CONSTRAINT fk_zona_unidade_conservacao 
         FOREIGN KEY (unidade_conservacao) REFERENCES unidade_conservacao (cnuc)
-        ON DELETE CASCADE,
+        ON DELETE CASCADE ON UPDATE CASCADE,
 
     CONSTRAINT ck_zona_tipo 
         CHECK (UPPER(tipo) IN ('PRESERVACAO','USO SUSTENTAVEL')),
@@ -56,7 +59,7 @@ CREATE TABLE comunidade_tradicional (
 
     CONSTRAINT fk_comunidade_tradicional_zona
         FOREIGN KEY (unidade_conservacao, nro_zona) REFERENCES zona (unidade_conservacao, nro_zona)
-        ON DELETE RESTRICT,
+        ON DELETE RESTRICT ON UPDATE CASCADE,
 
     CONSTRAINT ck_comunidade_tradicional_tamanho
         CHECK (tamanho IS NULL OR tamanho > 0),
@@ -129,7 +132,8 @@ CREATE TABLE funcionario (
 
     CONSTRAINT fk_funcionario_unidade_conservacao
         FOREIGN KEY (unidade_conservacao) REFERENCES unidade_conservacao (cnuc)
-        ON DELETE RESTRICT, -- Impede que a unidade seja apagada se houver funcionários
+        ON DELETE RESTRICT ON UPDATE CASCADE, -- Impede que a unidade seja apagada se houver funcionários
+    
 
     CONSTRAINT ck_funcionario_salario
         CHECK (salario >= 0), -- O salário não pode ser negativo, mas pode ser zero para voluntários
@@ -147,7 +151,7 @@ CREATE TABLE funcionario_categoria (
 
     CONSTRAINT fk_funcionario_categoria_funcionario
         FOREIGN KEY (funcionario) REFERENCES funcionario (nro_funcional)
-        ON DELETE CASCADE
+        ON DELETE CASCADE ON UPDATE CASCADE,
 );
 
 CREATE TABLE visitante (
@@ -181,11 +185,11 @@ CREATE TABLE visita (
 
     CONSTRAINT fk_visita_zona
         FOREIGN KEY (unidade_conservacao, nro_zona) REFERENCES zona (unidade_conservacao, nro_zona)
-        ON DELETE CASCADE,
+        ON DELETE CASCADE ON UPDATE CASCADE,
     
     CONSTRAINT fk_visita_guia
         FOREIGN KEY (guia) REFERENCES funcionario (nro_funcional)
-        ON DELETE SET NULL,
+        ON DELETE SET NULL ON UPDATE CASCADE, -- Se o guia for deletado, o campo guia da visita é setado para NULL, mas a visita não é deletada. Se o guia tiver seu número funcional atualizado, a atualização é propagada para a visita.
 
     CONSTRAINT ck_visita_nro_visitantes
         CHECK (nro_visitantes >= 0),
@@ -206,11 +210,11 @@ CREATE TABLE visita_visitante (
 
     CONSTRAINT fk_visita_visitante_visita
         FOREIGN KEY (visita) REFERENCES visita (cod_visita)
-        ON DELETE CASCADE,
+        ON DELETE CASCADE ON UPDATE CASCADE,
     
     CONSTRAINT fk_visita_visitante_visitante
         FOREIGN KEY (visitante) REFERENCES visitante (cpf)
-        ON DELETE CASCADE
+        ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE especie (
@@ -247,7 +251,7 @@ CREATE TABLE unidade_conservacao_especie (
 
     CONSTRAINT fk_unidade_conservacao_especie_unidade_conservacao
         FOREIGN KEY (unidade_conservacao) REFERENCES unidade_conservacao (cnuc)
-        ON DELETE CASCADE,
+        ON DELETE CASCADE ON UPDATE CASCADE,
 
     CONSTRAINT fk_unidade_conservacao_especie_especie
         FOREIGN KEY (especie) REFERENCES especie (nome_cientifico)

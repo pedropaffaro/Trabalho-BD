@@ -3,44 +3,44 @@
 -- ==========================
 INSERT INTO unidade_conservacao ( cnuc, nome, data_criacao, bioma, rodovia, km, cidade, uf, descricao_acesso, orgao_gestor, area_total) VALUES
 (
-  '000000000001', 'Parque Nacional do Iguaçu', '1939-01-10', 'Mata Atlântica', 'BR 469', 18, 'Foz do Iguaçu', 'PR', 'BR 469, Km 18, Foz do Iguaçu - PR', 'ICMBio', 185262.50
+  '000000000001', 'Parque Nacional do Iguaçu', '1939-01-10', 'Mata Atlântica', 'BR 469', 18, 'Foz do Iguaçu', 'PR', 'Acesso pela marginal da rodovia', 'ICMBio', 185262.50
 ),
 (
-  '000000000002', 'Parque Nacional da Chapada dos Veadeiros', '1961-01-11', 'Cerrado', 'GO 239', 36, 'Alto Paraíso de Goiás', 'GO', 'Rodovia GO 239, Km 36, Alto Paraíso de Goiás - GO', 'ICMBio', 240611.00
+  '000000000002', 'Parque Nacional da Chapada dos Veadeiros', '1961-01-11', 'Cerrado', 'GO 239', 36, 'Alto Paraíso de Goiás', 'GO', NULL, 'ICMBio', 240611.00
 ),
 (
-  '000000000003', 'Parque Nacional da Serra da Capivara', '1979-06-05', 'Caatinga', NULL, 0, 'São Raimundo Nonato', 'PI', 'São Raimundo Nonato - PI', 'ICMBio', 135000.00
+  '000000000003', 'Parque Nacional da Serra da Capivara', '1979-06-05', 'Caatinga', NULL, NULL, 'São Raimundo Nonato', 'PI', 'Acesso a partir da rotatória', 'ICMBio', 135000.00
 ),
 (
-  '000000000004', 'Reserva Extrativista Chico Mendes', '1990-03-12', 'Amazônia', NULL, 0, 'Xapuri', 'AC', 'Xapuri - AC', 'ICMBio', 970000.00
+  '000000000004', 'Reserva Extrativista Chico Mendes', '1990-03-12', 'Amazônia', NULL, NULL, 'Xapuri', 'AC', NULL, 'ICMBio', 970000.00
 ),
 (
-  '000000000005', 'Parque Nacional do Pantanal Matogrossense', '1981-11-24', 'Pantanal', NULL, 0, 'Corumbá', 'MS', 'Corumbá - MS', 'ICMBio', 1350000.00
+  '000000000005', 'Parque Nacional do Pantanal Matogrossense', '1981-11-24', 'Pantanal', NULL, NULL, 'Corumbá', 'MS', 'Acesso a partir da segunda saída da rodovia', 'ICMBio', 1350000.00
 ),
 (
-  '000000000006', 'Parque Nacional do Caparaó', '1961-09-24', 'Mata Atlântica', NULL, 0, 'Dores do Rio Preto', 'ES', 'Dores do Rio Preto - ES', 'ICMBio', 310000.00
+  '000000000006', 'Parque Nacional do Caparaó', '1961-09-24', 'Mata Atlântica', NULL, NULL, 'Dores do Rio Preto', 'ES', NULL, 'ICMBio', 310000.00
 ),
 (
-  '000000000007', 'Parque Nacional da Serra dos Órgãos', '1939-11-30', 'Mata Atlântica', NULL, 0, 'Teresópolis', 'RJ', 'Teresópolis - RJ', 'ICMBio', 200000.00
+  '000000000007', 'Parque Nacional da Serra dos Órgãos', '1939-11-30', 'Mata Atlântica', NULL, NULL, 'Teresópolis', 'RJ', NULL, 'ICMBio', 200000.00
 ),
 (
-  '000000000008', 'Parque Nacional de Jericoacoara', '1984-06-02', 'Caatinga', NULL, 0, 'Jericoacoara', 'CE', 'Jericoacoara - CE', 'ICMBio', 90000.00
+  '000000000008', 'Parque Nacional de Jericoacoara', '1984-06-02', 'Caatinga', NULL, NULL, 'Jericoacoara', 'CE', 'Acesso via estrada de terra', 'ICMBio', 90000.00
 ),
 (
-  '000000000009', 'Parque Nacional do Itatiaia', '1937-06-14', 'Mata Atlântica', NULL, 0, 'Itatiaia', 'RJ', 'Itatiaia - RJ', 'ICMBio', 300000.00
+  '000000000009', 'Parque Nacional do Itatiaia', '1937-06-14', 'Mata Atlântica', NULL, NULL, 'Itatiaia', 'RJ', 'O acesso é feito por trilhas', 'ICMBio', 300000.00
 ),
 (
-  '000000000010', 'Parque Nacional da Serra da Bocaina', '1971-04-13', 'Mata Atlântica', NULL, 0, 'Cunha', 'SP', 'Cunha - SP', 'ICMBio', 150000.00
+  '000000000010', 'Parque Nacional da Serra da Bocaina', '1971-04-13', 'Mata Atlântica', NULL, NULL, 'Cunha', 'SP', NULL, 'ICMBio', 150000.00
 ),
 (
-  '000000000011', 'Parque Nacional do Pampa', '2020-04-02', 'Pampa', NULL, 0, 'Alegrete', 'RS', 'Alegrete - RS', 'ICMBio', 84000.00
+  '000000000011', 'Parque Nacional do Pampa', '2020-04-02', 'Pampa', NULL, NULL, 'Alegrete', 'RS', 'Acesso é feito mediante o pagamento de taxas', 'ICMBio', 84000.00
 ),
 (
-  '000000000012', 'Parque Nacional Marinho de Fernando de Noronha', '1988-09-14', 'Marinho-Costeiro', NULL, 0, 'Fernando de Noronha', 'PE', 'Fernando de Noronha - PE', 'ICMBio', 11270.00
+  '000000000012', 'Parque Nacional Marinho de Fernando de Noronha', '1988-09-14', 'Marinho-Costeiro', NULL, NULL, 'Fernando de Noronha', 'PE', 'Acesso via barco', 'ICMBio', 11270.00
 );
 
 INSERT INTO unidade_conservacao ( cnuc, nome, bioma, rodovia, km, cidade, uf, descricao_acesso, orgao_gestor) VALUES (
-  '000000000013', 'Floresta Nacional de Brasília', 'Cerrado', NULL, 0, 'Brasília', 'DF', 'Brasília - DF', 'ICMBio'
+  '000000000013', 'Floresta Nacional de Brasília', 'Cerrado', NULL, NULL, 'Brasília', 'DF', 'O acesso está sinalizado a partir de dinossauros', 'ICMBio'
 );
 
 -- ==========================

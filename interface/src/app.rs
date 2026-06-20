@@ -3,11 +3,13 @@ use ratatui::widgets::TableState;
 
 use crate::api::{self, CreateUnidade, FilterParams, Unidade};
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum Screen {
     List,
     Create,
     Filter,
+    Edit,
+    DeleteConfirm,
 }
 
 #[derive(Default, Clone)]
@@ -76,19 +78,35 @@ pub struct App {
     pub filters: FilterParams,
     pub status: String,
     pub should_quit: bool,
+    pub editing_cnuc: String,
+    pub delete_cnuc: String,
 }
 
 pub const CREATE_LABELS: &[&str] = &[
     "CNUC (12 chars)*",
     "Nome",
-    "Data Criação (YYYY-MM-DD)",
+    "Data Criação (DD-MM-YYYY)",
     "Bioma",
-    "Endereço",
+    "Rodovia",
+    "KM",
+    "Cidade",
+    "UF (2 chars)",
+    "Descrição de Acesso",
     "Órgão Gestor",
     "Área Total",
 ];
 
-pub const FILTER_LABELS: &[&str] = &["Nome", "Bioma", "Órgão Gestor", "Data Criação (YYYY-MM-DD)"];
+pub const FILTER_LABELS: &[&str] = &[
+    "CNUC",
+    "Nome",
+    "Bioma",
+    "Órgão Gestor",
+    "Data Criação (DD-MM-YYYY)",
+    "Rodovia",
+    "Cidade",
+    "UF",
+    "KM",
+];
 
 impl App {
     pub fn new() -> Self {
@@ -101,6 +119,8 @@ impl App {
             filters: FilterParams::default(),
             status: "Bem vindo ao Sistema de Gestão de Unidades de Conservação! :D".into(),
             should_quit: false,
+            editing_cnuc: String::new(),
+            delete_cnuc: String::new(),
         };
 
         let _ = app.fetch_units();
@@ -137,12 +157,7 @@ impl App {
     }
 
     fn reset_filter(&mut self) {
-        self.filters = FilterParams {
-            nome: None,
-            bioma: None,
-            orgao_gestor: None,
-            data_criacao: None,
-        };
+        self.filters = FilterParams::default();
 
         self.screen = Screen::List;
         let _ = self.fetch_units();
@@ -158,6 +173,8 @@ impl App {
             Screen::List => self.handle_list(key),
             Screen::Create => self.handle_create(key),
             Screen::Filter => self.handle_filter(key),
+            Screen::Edit => self.handle_edit(key),
+            Screen::DeleteConfirm => self.handle_delete_confirm(key),
         }
     }
 
@@ -173,7 +190,7 @@ impl App {
             KeyCode::Char('/') => {
                 self.screen = Screen::Filter;
                 self.status =
-                    "Preencha os filtros. [Tab] Próximo  [Enter] Buscar  [Esc] Cancelar".into();
+                    "Filtrar: [Tab/Shift+Tab] Navegar  [Enter] Buscar  [Esc] Cancelar  │  Digite 'null' para buscar campos vazios".into();
             }
             KeyCode::Char('r') => {
                 self.status = "Atualizando...".into();
@@ -195,6 +212,8 @@ impl App {
                 self.status =
                     "Bem vindo ao Sistema de Gestão de Unidades de Conservação! :D".into();
             }
+            KeyCode::Char('e') => self.start_edit(),
+            KeyCode::Char('d') => self.start_delete(),
             KeyCode::Down | KeyCode::Char('j') => self.move_down(),
             KeyCode::Up | KeyCode::Char('k') => self.move_up(),
             _ => {}
@@ -223,6 +242,89 @@ impl App {
         self.table_state.select(Some(prev));
     }
 
+    fn start_edit(&mut self) {
+        let Some(unit) = self.table_state.selected().and_then(|i| self.units.get(i)) else {
+            self.status = "Selecione uma unidade para editar.".into();
+            return;
+        };
+        self.editing_cnuc = unit.cnuc.trim().to_string();
+        self.create.clear();
+        self.create.fields[0].value = self.editing_cnuc.clone();
+        self.create.fields[1].value = unit.nome.clone().unwrap_or_default();
+        self.create.fields[2].value = unit.data_criacao.clone().unwrap_or_default();
+        self.create.fields[3].value = unit.bioma.clone().unwrap_or_default();
+        self.create.fields[4].value = unit.rodovia.clone().unwrap_or_default();
+        self.create.fields[5].value = unit.km.map(|v| v.to_string()).unwrap_or_default();
+        self.create.fields[6].value = unit.cidade.clone().unwrap_or_default();
+        self.create.fields[7].value = unit.uf.clone().unwrap_or_default();
+        self.create.fields[8].value = unit.descricao_acesso.clone().unwrap_or_default();
+        self.create.fields[9].value = unit.orgao_gestor.clone().unwrap_or_default();
+        self.create.fields[10].value = unit.area_total_str().replace('-', "");
+        self.create.focused = 1;
+        self.screen = Screen::Edit;
+        self.status = format!("Editando '{}'  [Tab] Próximo  [Enter] Salvar  [Esc] Cancelar", self.editing_cnuc);
+    }
+
+    fn start_delete(&mut self) {
+        let Some(unit) = self.table_state.selected().and_then(|i| self.units.get(i)) else {
+            self.status = "Selecione uma unidade para excluir.".into();
+            return;
+        };
+        self.delete_cnuc = unit.cnuc.trim().to_string();
+        let nome = unit.nome.clone().unwrap_or_else(|| "—".into());
+        self.screen = Screen::DeleteConfirm;
+        self.status = format!("Confirmar exclusão de '{}' ({})?  [s] Sim  [n/Esc] Não", self.delete_cnuc, nome);
+    }
+
+    fn handle_edit(&mut self, key: KeyCode) {
+        match key {
+            KeyCode::Esc => {
+                self.screen = Screen::List;
+                self.status = "Edição cancelada.".into();
+            }
+            KeyCode::Tab => self.create.next(),
+            KeyCode::BackTab => self.create.prev(),
+            KeyCode::Enter => self.submit_edit(),
+            KeyCode::Char(c) => {
+                // Lock CNUC field (index 0) in edit mode
+                if self.create.focused != 0 {
+                    self.create.fields[self.create.focused].push(c);
+                }
+            }
+            KeyCode::Backspace => {
+                if self.create.focused != 0 {
+                    self.create.fields[self.create.focused].pop();
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_delete_confirm(&mut self, key: KeyCode) {
+        match key {
+            KeyCode::Char('s') | KeyCode::Char('S') => {
+                let cnuc = self.delete_cnuc.clone();
+                self.status = "Excluindo...".into();
+                match api::delete_unidade(&cnuc) {
+                    Ok(_) => {
+                        self.screen = Screen::List;
+                        let _ = self.fetch_units();
+                        self.status = format!("Unidade '{}' excluída com sucesso!", cnuc);
+                    }
+                    Err(e) => {
+                        self.screen = Screen::List;
+                        self.status = format!("Erro ao excluir: {e}");
+                    }
+                }
+            }
+            KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
+                self.screen = Screen::List;
+                self.status = "Exclusão cancelada.".into();
+            }
+            _ => {}
+        }
+    }
+
     fn handle_create(&mut self, key: KeyCode) {
         match key {
             KeyCode::Esc => {
@@ -245,7 +347,18 @@ impl App {
             return;
         }
 
-        let area_total = match self.create.val(6) {
+        let km = match self.create.val(5) {
+            None => None,
+            Some(s) => match s.parse::<i32>() {
+                Ok(v) => Some(v),
+                Err(_) => {
+                    self.status = "Erro: KM deve ser um número inteiro (ex: 18)".into();
+                    return;
+                }
+            },
+        };
+
+        let area_total = match self.create.val(10) {
             None => None,
             Some(s) => match s.parse::<f64>() {
                 Ok(v) => Some(v),
@@ -261,8 +374,12 @@ impl App {
             nome: self.create.val(1),
             data_criacao: self.create.val(2),
             bioma: self.create.val(3),
-            endereco: self.create.val(4),
-            orgao_gestor: self.create.val(5),
+            rodovia: self.create.val(4),
+            km,
+            cidade: self.create.val(6),
+            uf: self.create.val(7),
+            descricao_acesso: self.create.val(8),
+            orgao_gestor: self.create.val(9),
             area_total,
         };
 
@@ -272,6 +389,57 @@ impl App {
                 self.screen = Screen::List;
                 let _ = self.fetch_units();
                 self.status = format!("Unidade '{}' criada com sucesso!", u.cnuc);
+            }
+            Err(e) => {
+                self.status = format!("Erro: {e}");
+            }
+        }
+    }
+
+    fn submit_edit(&mut self) {
+        let km = match self.create.val(5) {
+            None => None,
+            Some(s) => match s.parse::<i32>() {
+                Ok(v) => Some(v),
+                Err(_) => {
+                    self.status = "Erro: KM deve ser um número inteiro (ex: 18)".into();
+                    return;
+                }
+            },
+        };
+
+        let area_total = match self.create.val(10) {
+            None => None,
+            Some(s) => match s.parse::<f64>() {
+                Ok(v) => Some(v),
+                Err(_) => {
+                    self.status = "Erro: Área Total deve ser um número (ex: 1234.56)".into();
+                    return;
+                }
+            },
+        };
+
+        let payload = CreateUnidade {
+            cnuc: self.editing_cnuc.clone(),
+            nome: self.create.val(1),
+            data_criacao: self.create.val(2),
+            bioma: self.create.val(3),
+            rodovia: self.create.val(4),
+            km,
+            cidade: self.create.val(6),
+            uf: self.create.val(7),
+            descricao_acesso: self.create.val(8),
+            orgao_gestor: self.create.val(9),
+            area_total,
+        };
+
+        self.status = "Atualizando...".into();
+        let cnuc = self.editing_cnuc.clone();
+        match api::update_unidade(&cnuc, &payload) {
+            Ok(u) => {
+                self.screen = Screen::List;
+                let _ = self.fetch_units();
+                self.status = format!("Unidade '{}' atualizada com sucesso!", u.cnuc);
             }
             Err(e) => {
                 self.status = format!("Erro: {e}");
@@ -296,10 +464,15 @@ impl App {
 
     fn submit_filter(&mut self) {
         self.filters = FilterParams {
-            nome: self.filter.val(0),
-            bioma: self.filter.val(1),
-            orgao_gestor: self.filter.val(2),
-            data_criacao: self.filter.val(3),
+            cnuc: self.filter.val(0),
+            nome: self.filter.val(1),
+            bioma: self.filter.val(2),
+            orgao_gestor: self.filter.val(3),
+            data_criacao: self.filter.val(4),
+            rodovia: self.filter.val(5),
+            cidade: self.filter.val(6),
+            uf: self.filter.val(7),
+            km: self.filter.val(8),
         };
         self.status = "Buscando...".into();
 
