@@ -13,7 +13,7 @@ JOIN (
 WHERE O.metodo = 'CAMERA' AND E.status_conservacao IN ('CR', 'EN', 'VU')
 GROUP BY O.biologo;
 
--- Selecionar a quantidade de funcionários que possuem mais de uma categoria agrupados por unidade de conservação.
+-- [OK] Selecionar a quantidade de funcionários que possuem mais de uma categoria agrupados por unidade de conservação.
 SELECT F.unidade_conservacao, COUNT(*) AS nro_funcionarios_multicategoricos
 FROM funcionario F
 JOIN (
@@ -67,7 +67,7 @@ WHERE
 
 -- Identificar espécies que constam na literatura/cadastros teóricos, mas que estão "sumidas" na prática.
 -- Liste apenas as espécies que nunca tiveram nenhum ser vivo registrado no sistema.
-SELECT E.nome_cientifico, E.status_conservacao, COUNT(PE.pesquisa) AS qte_pesquisas
+explain SELECT E.nome_cientifico, E.status_conservacao, COUNT(PE.pesquisa) AS qte_pesquisas
 FROM especie E
 LEFT JOIN ser_vivo S ON E.nome_cientifico = S.especie
 LEFT JOIN pesquisa_especie PE ON E.nome_cientifico = PE.especie
@@ -76,7 +76,7 @@ GROUP BY E.nome_cientifico, E.status_conservacao;
 
 
 -- Essa é a mais otimizada
-SELECT E.nome_cientifico, E.status_conservacao, COUNT(PE.pesquisa) AS qte_pesquisas
+explain SELECT E.nome_cientifico, E.status_conservacao, COUNT(PE.pesquisa) AS qte_pesquisas
 FROM especie E
 LEFT JOIN pesquisa_especie PE ON E.nome_cientifico = PE.especie
 WHERE NOT EXISTS (

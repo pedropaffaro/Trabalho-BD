@@ -19,9 +19,9 @@ services:
       timeout: 5s
       retries: 5
 
-  backend:
+  backend-bd:
     build: ./backend
-    container_name: backend
+    container_name: backend-bd
     restart: always
     ports:
       - "8000:8000"
