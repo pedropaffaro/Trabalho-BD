@@ -12,16 +12,24 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./SQL/esquema.sql:/docker-entrypoint-initdb.d/init.sql
-  backend:
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend-bd:
     build: ./backend
-    container_name: backend
+    container_name: backend-bd
     restart: always
     ports:
       - "8000:8000"
     env_file:
       - ./backend/.env
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
 volumes:
   postgres_data:
