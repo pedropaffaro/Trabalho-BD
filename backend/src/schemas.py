@@ -21,6 +21,8 @@ class UnidadeCreate(BaseModel):
             raise ValueError("CNUC deve conter exatamente 12 dígitos numéricos.")
         return v
 
+    # mode="before": roda antes da coerção do Pydantic, aceitando a data em
+    # vários formatos (BR e ISO). Tenta cada um; se nenhum casar, erro em PT.
     @field_validator("data_criacao", mode="before")
     @classmethod
     def parse_data(cls, v):
@@ -31,7 +33,7 @@ class UnidadeCreate(BaseModel):
                 try:
                     return datetime.strptime(v, fmt).date()
                 except ValueError:
-                    pass
+                    pass  # tenta o próximo formato
             raise ValueError("Data deve estar no formato DD-MM-AAAA (ex: 31-12-2026)")
         return v
 
@@ -49,6 +51,7 @@ class UnidadeCreate(BaseModel):
         if len(v) != 2 or not v.isalpha():
             raise ValueError("UF deve conter exatamente 2 letras (ex: SP).")
         return v.upper()
+
     descricao_acesso: Optional[str] = Field(
         None, max_length=255, example="Acesso pela marginal da rodovia"
     )
@@ -71,7 +74,7 @@ class UnidadeResponse(BaseModel):
     orgao_gestor: Optional[str] = None
     area_total: Optional[Decimal] = None
 
+    # Na saída, devolve a data como string DD-MM-AAAA (formato BR) em vez do ISO.
     @field_serializer("data_criacao")
     def format_data(self, v: Optional[date]) -> Optional[str]:
         return v.strftime("%d-%m-%Y") if v else None
-

@@ -51,6 +51,7 @@ _CONSTRAINT_MSGS: dict[str, str] = {
 
 
 # Converte erros do asyncpg em HTTPException com status e mensagem adequados.
+# As mensagens são utilizadas pela interface para orientar o usuário
 def _db_error_to_http(e: Exception, cnuc: str = "") -> HTTPException:
     if isinstance(e, asyncpg.UniqueViolationError):
         constraint = getattr(e, "constraint_name", "")
@@ -117,12 +118,15 @@ async def criar_unidade(
     payload: UnidadeCreate,
     pool: asyncpg.Pool = Depends(get_env_pool),
 ):
+    # Placeholders $1..$11: os valores vão parametrizados (anti-SQL-injection).
+    # RETURNING * devolve a linha gravada para ecoar na resposta.
     sql = """
         INSERT INTO unidade_conservacao
             (cnuc, nome, data_criacao, bioma, rodovia, km, cidade, uf, descricao_acesso, orgao_gestor, area_total)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING *
     """
+    # Conexão emprestada do pool; transação explícita para commitar/desfazer.
     async with pool.acquire() as conn:
         await conn.execute("BEGIN")
         try:
@@ -142,10 +146,10 @@ async def criar_unidade(
             )
             await conn.execute("COMMIT")
         except asyncpg.PostgresError as e:
-            await conn.execute("ROLLBACK")
+            await conn.execute("ROLLBACK")  # qualquer violação desfaz a inserção
             raise _db_error_to_http(e, cnuc=payload.cnuc)
 
-    return dict(row)
+    return dict(row)  # Record -> dict para o response_model serializar
 
 
 @router.get(
@@ -183,11 +187,14 @@ async def listar_unidades(
     ),
     pool: asyncpg.Pool = Depends(get_env_pool),
 ):
+    # Monta o WHERE dinamicamente: conditions guarda os trechos SQL e params os
+    # valores; i é o próximo número de placeholder ($1, $2, ...). Só nomes de
+    # coluna entram na string — valores sempre via $i.
     conditions = []
     params = []
     i = 1
 
-    if cnuc:
+    if cnuc:  # CNUC: busca exata (é a PK)
         conditions.append(f"cnuc = ${i}")
         params.append(cnuc)
         i += 1
@@ -199,6 +206,7 @@ async def listar_unidades(
     i = _add_condition("cidade", cidade, conditions, params, i)
     i = _add_condition("uf", uf, conditions, params, i, exact=True)
 
+    # Data: aceita 'null' (IS NULL) ou uma data em vários formatos (BR/ISO).
     if data_criacao:
         if _is_null_search(data_criacao):
             conditions.append("data_criacao IS NULL")
@@ -207,10 +215,10 @@ async def listar_unidades(
             for fmt in ("%d-%m-%Y", "%d/%m/%Y", "%Y-%m-%d", "%Y/%m/%d"):
                 try:
                     dc = datetime.strptime(data_criacao, fmt).date()
-                    break
+                    break  # primeiro formato que casar
                 except ValueError:
                     pass
-            if dc is None:
+            if dc is None:  # nenhum formato casou -> 400
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="data_criacao deve estar no formato DD-MM-AAAA (ex: 31-12-2026) ou 'null'",
@@ -233,12 +241,13 @@ async def listar_unidades(
                     detail="km deve ser um número inteiro ou 'null'",
                 )
 
+    # Junta as condições com AND; sem filtros, WHERE fica vazio (lista tudo).
     where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
     sql = f"SELECT * FROM unidade_conservacao {where} ORDER BY cnuc"
 
     try:
         async with pool.acquire() as conn:
-            rows = await conn.fetch(sql, *params)
+            rows = await conn.fetch(sql, *params)  # fetch = várias linhas
     except asyncpg.PostgresError as e:
         raise _db_error_to_http(e)
     except Exception as e:
@@ -246,13 +255,13 @@ async def listar_unidades(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro ao consultar unidades: {str(e)}",
         )
-    if not rows:
+    if not rows:  # filtros sem resultado -> 404
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Nenhuma unidade de conservação encontrada com os filtros fornecidos.",
         )
 
-    return [dict(r) for r in rows]
+    return [dict(r) for r in rows]  # cada Record -> dict
 
 
 @router.delete(
@@ -265,6 +274,7 @@ async def deletar_unidade(
     cnuc: str,
     pool: asyncpg.Pool = Depends(get_env_pool),
 ):
+    # RETURNING * traz a linha removida; se nada voltar, o CNUC não existia.
     sql = "DELETE FROM unidade_conservacao WHERE cnuc = $1 RETURNING *"
     async with pool.acquire() as conn:
         await conn.execute("BEGIN")
@@ -274,7 +284,7 @@ async def deletar_unidade(
         except asyncpg.PostgresError as e:
             await conn.execute("ROLLBACK")
             raise _db_error_to_http(e, cnuc=cnuc)
-    if not row:
+    if not row:  # fetchrow retornou None -> CNUC inexistente
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Unidade de conservação com cnuc '{cnuc}' não encontrada.",
@@ -324,7 +334,7 @@ async def atualizar_unidade(
         except asyncpg.PostgresError as e:
             await conn.execute("ROLLBACK")
             raise _db_error_to_http(e, cnuc=cnuc)
-    if not row:
+    if not row:  # UPDATE não afetou nenhuma linha -> CNUC inexistente
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Unidade de conservação com cnuc '{cnuc}' não encontrada.",
