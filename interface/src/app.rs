@@ -339,17 +339,9 @@ impl App {
             KeyCode::Tab => self.create.next(),
             KeyCode::BackTab => self.create.prev(),
             KeyCode::Enter => self.submit_edit(),
-            KeyCode::Char(c) => {
-                // Lock CNUC field (index 0) in edit mode
-                if self.create.focused != 0 {
-                    self.create.fields[self.create.focused].push(c);
-                }
-            }
-            KeyCode::Backspace => {
-                if self.create.focused != 0 {
-                    self.create.fields[self.create.focused].pop();
-                }
-            }
+            // CNUC (índice 0) é editável: a troca da PK é propagada pelo backend.
+            KeyCode::Char(c) => self.create.fields[self.create.focused].push(c),
+            KeyCode::Backspace => self.create.fields[self.create.focused].pop(),
             _ => {}
         }
     }
@@ -460,8 +452,18 @@ impl App {
         }
     }
 
-    /// Monta o payload e chama PUT `/unidades/{cnuc}` (CNUC imutável).
+    /// Monta o payload e chama PUT `/unidades/{cnuc}`. O CNUC pode ser alterado:
+    /// o CNUC antigo (`editing_cnuc`) vai na rota; o novo, do formulário, no corpo.
     fn submit_edit(&mut self) {
+        let new_cnuc = self.create.fields[0].value.clone();
+        if new_cnuc.len() != 12 {
+            self.status = "Erro: CNUC deve ter exatamente 12 caracteres!".into();
+            return;
+        }
+        if let Err(e) = check_cnuc_digits(&new_cnuc) {
+            self.status = e;
+            return;
+        }
         if let Err(e) = check_uf(&self.create.val(7)) {
             self.status = e;
             return;
@@ -490,7 +492,7 @@ impl App {
         };
 
         let payload = CreateUnidade {
-            cnuc: self.editing_cnuc.clone(),
+            cnuc: new_cnuc,
             nome: self.create.val(1),
             data_criacao: self.create.val(2),
             bioma: self.create.val(3),

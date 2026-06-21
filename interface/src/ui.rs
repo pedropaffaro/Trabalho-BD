@@ -281,7 +281,7 @@ fn render_form(
     let hint = match app.screen {
         Screen::Create => "[Tab] Próximo  [Shift+Tab] Anterior  [Enter] Criar  [Esc] Cancelar",
         Screen::Edit => {
-            "[Tab] Próximo  [Shift+Tab] Anterior  [Enter] Salvar  [Esc] Cancelar  │  CNUC bloqueado"
+            "[Tab] Próximo  [Shift+Tab] Anterior  [Enter] Salvar  [Esc] Cancelar"
         }
         Screen::Filter => "[Tab] Próximo  [Shift+Tab] Anterior  [Enter] Buscar  [Esc] Cancelar",
         _ => "",
