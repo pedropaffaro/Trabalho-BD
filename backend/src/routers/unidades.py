@@ -112,8 +112,9 @@ async def criar_unidade(
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING *
     """
-    try:
-        async with pool.acquire() as conn:
+    async with pool.acquire() as conn:
+        await conn.execute('BEGIN')
+        try:
             row = await conn.fetchrow(
                 sql,
                 payload.cnuc,
@@ -128,8 +129,10 @@ async def criar_unidade(
                 payload.orgao_gestor,
                 payload.area_total,
             )
-    except asyncpg.PostgresError as e:
-        raise _db_error_to_http(e, cnuc=payload.cnuc)
+            await conn.execute('COMMIT')
+        except asyncpg.PostgresError as e:
+            await conn.execute('ROLLBACK')
+            raise _db_error_to_http(e, cnuc=payload.cnuc)
 
     return dict(row)
 
@@ -234,11 +237,14 @@ async def deletar_unidade(
     pool: asyncpg.Pool = Depends(get_env_pool),
 ):
     sql = "DELETE FROM unidade_conservacao WHERE cnuc = $1 RETURNING *"
-    try:
-        async with pool.acquire() as conn:
+    async with pool.acquire() as conn:
+        await conn.execute('BEGIN')
+        try:
             row = await conn.fetchrow(sql, cnuc)
-    except asyncpg.PostgresError as e:
-        raise _db_error_to_http(e, cnuc=cnuc)
+            await conn.execute('COMMIT')
+        except asyncpg.PostgresError as e:
+            await conn.execute('ROLLBACK')
+            raise _db_error_to_http(e, cnuc=cnuc)
     if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -264,8 +270,9 @@ async def atualizar_unidade(
         WHERE cnuc = $11
         RETURNING *
     """
-    try:
-        async with pool.acquire() as conn:
+    async with pool.acquire() as conn:
+        await conn.execute('BEGIN')
+        try:
             row = await conn.fetchrow(
                 sql,
                 payload.nome,
@@ -280,8 +287,10 @@ async def atualizar_unidade(
                 payload.area_total,
                 cnuc,
             )
-    except asyncpg.PostgresError as e:
-        raise _db_error_to_http(e, cnuc=cnuc)
+            await conn.execute('COMMIT')
+        except asyncpg.PostgresError as e:
+            await conn.execute('ROLLBACK')
+            raise _db_error_to_http(e, cnuc=cnuc)
     if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
