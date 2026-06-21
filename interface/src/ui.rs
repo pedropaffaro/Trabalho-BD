@@ -1,3 +1,6 @@
+//! Renderização da TUI. Funções puras de desenho: leem o [`App`] e produzem
+//! os widgets do ratatui, sem alterar estado (exceto `TableState` de seleção).
+
 use ratatui::{
     layout::{Constraint, Layout, Position, Rect},
     style::{Color, Modifier, Style, Stylize},
@@ -14,6 +17,7 @@ const YELLOW: Color = Color::Yellow;
 const DARK_GRAY: Color = Color::DarkGray;
 const RED: Color = Color::Red;
 
+/// Desenha a tela inteira: área principal (conforme `app.screen`) + barra de status.
 pub fn render(frame: &mut Frame, app: &mut App) {
     let [main, status_bar] =
         Layout::vertical([Constraint::Min(3), Constraint::Length(1)]).areas(frame.area());
@@ -29,6 +33,15 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             CREATE_LABELS,
             app.create.focused,
         ),
+        Screen::Edit => render_form(
+            frame,
+            app,
+            main,
+            " Editar Unidade de Conservação ",
+            &app.create.fields.clone(),
+            CREATE_LABELS,
+            app.create.focused,
+        ),
         Screen::Filter => render_form(
             frame,
             app,
@@ -38,13 +51,14 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             FILTER_LABELS,
             app.filter.focused,
         ),
+        Screen::DeleteConfirm => render_delete_confirm(frame, app, main),
     }
 
     render_status(frame, app, status_bar);
 }
 
 fn render_list(frame: &mut Frame, app: &mut App, area: Rect) {
-    let detail_height = 6u16;
+    let detail_height = 8u16;
     let [table_area, detail_area] =
         Layout::vertical([Constraint::Min(3), Constraint::Length(detail_height)]).areas(area);
 
@@ -137,8 +151,22 @@ fn render_detail(frame: &mut Frame, app: &App, area: Rect) {
                     Span::raw(u.area_total_str()),
                 ]),
                 Line::from(vec![
-                    Span::styled("Endereço: ", Style::new().fg(DARK_GRAY)),
-                    Span::raw(u.endereco.as_deref().unwrap_or("—")),
+                    Span::styled("Rodovia: ", Style::new().fg(DARK_GRAY)),
+                    Span::raw(u.rodovia.as_deref().unwrap_or("—")),
+                    Span::raw("   "),
+                    Span::styled("KM: ", Style::new().fg(DARK_GRAY)),
+                    Span::raw(u.km.map(|v| v.to_string()).unwrap_or_else(|| "—".into())),
+                ]),
+                Line::from(vec![
+                    Span::styled("Cidade: ", Style::new().fg(DARK_GRAY)),
+                    Span::raw(u.cidade.as_deref().unwrap_or("—")),
+                    Span::raw("   "),
+                    Span::styled("UF: ", Style::new().fg(DARK_GRAY)),
+                    Span::raw(u.uf.as_deref().unwrap_or("—")),
+                ]),
+                Line::from(vec![
+                    Span::styled("Descrição de Acesso: ", Style::new().fg(DARK_GRAY)),
+                    Span::raw(u.descricao_acesso.as_deref().unwrap_or("—")),
                 ]),
             ];
             Paragraph::new(lines).block(block).wrap(Wrap { trim: true })
@@ -148,6 +176,8 @@ fn render_detail(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(content, area);
 }
 
+/// Formulário genérico (Create/Edit/Filter): rótulos + caixas de input, cursor
+/// no campo em foco e dica de teclas ao pé. O campo CNUC ganha contador `[n/12]`.
 fn render_form(
     frame: &mut Frame,
     app: &mut App,
@@ -177,8 +207,22 @@ fn render_form(
         }
 
         let is_focused = i == focused;
+        let is_cnuc = i == 0 && app.screen != Screen::List;
 
-        let label_style = if is_focused {
+        let cnuc_label_buf;
+        let effective_label = if is_cnuc {
+            let len = field.value.chars().count();
+            cnuc_label_buf = format!("CNUC [{}/12]", len);
+            cnuc_label_buf.as_str()
+        } else {
+            label
+        };
+
+        let label_style = if is_cnuc {
+            let len = field.value.chars().count();
+            let color = if len == 12 { GREEN } else { YELLOW };
+            Style::new().fg(color).add_modifier(Modifier::BOLD)
+        } else if is_focused {
             Style::new().fg(GREEN).add_modifier(Modifier::BOLD)
         } else {
             Style::new().fg(DARK_GRAY)
@@ -190,8 +234,11 @@ fn render_form(
             Style::new().fg(Color::Gray)
         };
 
-        // Render label (right-padded to max_label_w + ": ")
-        let label_text = format!("{:<width$}: ", label, width = max_label_w as usize);
+        let label_text = format!(
+            "{:<width$}: ",
+            effective_label,
+            width = max_label_w as usize
+        );
         let label_rect = Rect {
             x: inner.x + 2,
             y: row_y,
@@ -200,7 +247,6 @@ fn render_form(
         };
         frame.render_widget(Paragraph::new(label_text).style(label_style), label_rect);
 
-        // Render input box
         let input_w = inner
             .width
             .saturating_sub(input_start_x - inner.x)
@@ -232,11 +278,13 @@ fn render_form(
         }
     }
 
-    // Key hint at the bottom of the form
     let hint = match app.screen {
         Screen::Create => "[Tab] Próximo  [Shift+Tab] Anterior  [Enter] Criar  [Esc] Cancelar",
+        Screen::Edit => {
+            "[Tab] Próximo  [Shift+Tab] Anterior  [Enter] Salvar  [Esc] Cancelar"
+        }
         Screen::Filter => "[Tab] Próximo  [Shift+Tab] Anterior  [Enter] Buscar  [Esc] Cancelar",
-        Screen::List => "",
+        _ => "",
     };
     let hint_y = inner.y + inner.height.saturating_sub(1);
     if hint_y > inner.y && !hint.is_empty() {
@@ -252,7 +300,54 @@ fn render_form(
     }
 }
 
+/// Barra de status: colore a mensagem (vermelho p/ erro, verde p/ sucesso,
+/// amarelo p/ em-progresso) e anexa as dicas de atalho na tela de lista.
 fn render_status(frame: &mut Frame, app: &App, area: Rect) {
+    // On create/edit form: always show CNUC counter on the left with color
+    if app.screen == Screen::Create || app.screen == Screen::Edit {
+        let len = app
+            .create
+            .fields
+            .first()
+            .map(|f| f.value.chars().count())
+            .unwrap_or(0);
+        let (cnuc_style, check) = if len == 12 {
+            (Style::new().fg(GREEN).bold(), " ✓")
+        } else {
+            (Style::new().fg(YELLOW).bold(), "")
+        };
+        let counter = format!(" CNUC {}/12{}  ", len, check);
+        let counter_w = counter.chars().count() as u16;
+
+        frame.render_widget(
+            Paragraph::new(counter).style(cnuc_style),
+            Rect {
+                x: area.x,
+                y: area.y,
+                width: counter_w.min(area.width),
+                height: 1,
+            },
+        );
+
+        if counter_w < area.width {
+            let rest_style = if app.status.starts_with("Erro") {
+                Style::new().fg(RED)
+            } else {
+                Style::new().fg(DARK_GRAY)
+            };
+            frame.render_widget(
+                Paragraph::new(format!("│ {}", app.status)).style(rest_style),
+                Rect {
+                    x: area.x + counter_w,
+                    y: area.y,
+                    width: area.width - counter_w,
+                    height: 1,
+                },
+            );
+        }
+        return;
+    }
+
     let style = if app.status.starts_with("Erro") || app.status.starts_with("Falha") {
         Style::new().fg(RED)
     } else if app.status.contains("sucesso") || app.status.contains("encontrada") {
@@ -266,10 +361,9 @@ fn render_status(frame: &mut Frame, app: &App, area: Rect) {
         Style::new().fg(DARK_GRAY)
     };
 
-    // Show key hints for list screen inline with status
     let text = if app.screen == Screen::List {
         format!(
-            " {}  │  [n] Nova  [/] Filtrar  [r] Atualizar  [j/k ↑↓] Navegar  [q] Sair",
+            " {}  │  [n] Nova  [e] Editar  [d] Excluir  [/] Filtrar  [r] Atualizar  [j/k ↑↓] Navegar  [q] Sair",
             app.status
         )
     } else {
@@ -279,19 +373,65 @@ fn render_status(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(Paragraph::new(text).style(style), area);
 }
 
+fn render_delete_confirm(frame: &mut Frame, app: &App, area: Rect) {
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Confirmar Exclusão ")
+        .title_style(Style::new().fg(RED).bold());
+
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    let nome = app
+        .table_state
+        .selected()
+        .and_then(|i| app.units.get(i))
+        .and_then(|u| u.nome.as_deref())
+        .unwrap_or("—");
+
+    let lines = vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  Unidade: ", Style::new().fg(DARK_GRAY)),
+            Span::styled(
+                app.delete_cnuc.as_str(),
+                Style::new().fg(Color::White).bold(),
+            ),
+            Span::raw("  —  "),
+            Span::raw(nome),
+        ]),
+        Line::from(""),
+        Line::from(vec![Span::styled(
+            "  Esta operação é irreversível. Confirmar exclusão?",
+            Style::new().fg(YELLOW),
+        )]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  [s] Sim, excluir", Style::new().fg(RED).bold()),
+            Span::raw("      "),
+            Span::styled("[n / Esc] Cancelar", Style::new().fg(GREEN).bold()),
+        ]),
+    ];
+
+    frame.render_widget(Paragraph::new(lines), inner);
+}
+
+/// Monta o texto `chave=valor, ...` dos filtros ativos para o título da tabela.
 fn build_filter_label(app: &App) -> String {
-    let mut parts = vec![];
-    if let Some(v) = &app.filters.nome {
-        parts.push(format!("nome={v}"));
-    }
-    if let Some(v) = &app.filters.bioma {
-        parts.push(format!("bioma={v}"));
-    }
-    if let Some(v) = &app.filters.orgao_gestor {
-        parts.push(format!("órgão={v}"));
-    }
-    if let Some(v) = &app.filters.data_criacao {
-        parts.push(format!("data={v}"));
-    }
-    parts.join(", ")
+    let active: &[(&str, &Option<String>)] = &[
+        ("cnuc", &app.filters.cnuc),
+        ("nome", &app.filters.nome),
+        ("bioma", &app.filters.bioma),
+        ("órgão", &app.filters.orgao_gestor),
+        ("data", &app.filters.data_criacao),
+        ("rodovia", &app.filters.rodovia),
+        ("cidade", &app.filters.cidade),
+        ("uf", &app.filters.uf),
+        ("km", &app.filters.km),
+    ];
+    active
+        .iter()
+        .filter_map(|(k, v)| v.as_deref().map(|val| format!("{k}={val}")))
+        .collect::<Vec<_>>()
+        .join(", ")
 }

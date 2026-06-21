@@ -1,4 +1,5 @@
 PROJECT=trabalho_bd
+FILE=SQL/consultas.sql
 
 .PHONY: help up build down restart logs logs-front bash-front logs-backoffice bash-backoffice logs-backend bash-backend psql logs-db ps
 
@@ -28,10 +29,10 @@ bash-front: ## Abre o terminal interativo dentro do interface
 	docker compose -p $(PROJECT) exec interface sh
 
 logs-backend: ## Mostra os logs apenas do contêiner backend
-	docker compose -p $(PROJECT) logs -f backend
+	docker compose -p $(PROJECT) logs -f backend-bd
 
 bash-backend: ## Abre o terminal (bash) interativo dentro do backend
-	docker compose -p $(PROJECT) exec backend sh
+	docker compose -p $(PROJECT) exec backend-bd sh
 
 psql: ## Acessa o banco de dados PostgreSQL via CLI usando as variáveis do .env
 	docker compose -p $(PROJECT) exec db sh -c 'psql -U $$DB_USER -d $$DB_NAME'
@@ -47,3 +48,7 @@ logs-db: ## Mostra os logs apenas do banco de dados
 
 ps: ## Lista o status e as portas de todos os contêineres ativos do projeto
 	docker compose -p $(PROJECT) ps
+
+run:
+	docker compose -p $(PROJECT) exec -T db sh -c 'psql -U $$DB_USER -d $$DB_NAME' < $(FILE)
+
