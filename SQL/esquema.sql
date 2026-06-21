@@ -15,8 +15,9 @@ CREATE TABLE unidade_conservacao (
     CONSTRAINT pk_unidade_conservacao 
         PRIMARY KEY (cnuc),
 
+    -- CNUC oficial: 10 dígitos no formato XXXX.XX.XXXX (12 caracteres com os pontos)
     CONSTRAINT ck_cnuc_formato
-        CHECK (cnuc ~ '^[0-9]{12}$'),
+        CHECK (cnuc ~ '^[0-9]{4}\.[0-9]{2}\.[0-9]{4}$'),
 
     CONSTRAINT ck_area_total 
         CHECK (area_total >= 0),

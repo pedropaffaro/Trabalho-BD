@@ -9,13 +9,35 @@ use ratatui::widgets::TableState;
 
 use crate::api::{self, CreateUnidade, FilterParams, Unidade};
 
-/// Valida (no cliente) que o CNUC contém apenas dígitos `0-9`.
-/// Retorna a mensagem de erro em português quando inválido.
-fn check_cnuc_digits(cnuc: &str) -> Result<(), String> {
-    if cnuc.chars().all(|c| c.is_ascii_digit()) {
+/// Formata até 10 dígitos no padrão oficial do CNUC: `XXXX.XX.XXXX`.
+/// Ignora não-dígitos da entrada e insere os pontos após o 4º e o 6º dígito.
+pub fn format_cnuc(raw: &str) -> String {
+    let digits: String = raw.chars().filter(|c| c.is_ascii_digit()).take(10).collect();
+    let mut out = String::new();
+    for (i, c) in digits.chars().enumerate() {
+        if i == 4 || i == 6 {
+            out.push('.');
+        }
+        out.push(c);
+    }
+    out
+}
+
+/// Valida (no cliente) que o CNUC está completo no formato `XXXX.XX.XXXX`
+/// (12 caracteres: 10 dígitos + 2 pontos nas posições 4 e 7).
+fn check_cnuc_format(cnuc: &str) -> Result<(), String> {
+    let ok = cnuc.len() == 12
+        && cnuc.chars().enumerate().all(|(i, c)| {
+            if i == 4 || i == 7 {
+                c == '.'
+            } else {
+                c.is_ascii_digit()
+            }
+        });
+    if ok {
         Ok(())
     } else {
-        Err("Erro: CNUC deve conter apenas números (0-9).".into())
+        Err("Erro: CNUC deve estar no formato XXXX.XX.XXXX (ex: 0795.50.4329).".into())
     }
 }
 
@@ -27,6 +49,36 @@ fn check_uf(uf: &Option<String>) -> Result<(), String> {
             Err("Erro: UF deve conter exatamente 2 letras (ex: SP).".into())
         }
         _ => Ok(()),
+    }
+}
+
+/// Insere um caractere no campo em foco. No campo CNUC (índice 0) aceita só
+/// dígitos e reaplica a máscara `XXXX.XX.XXXX` automaticamente.
+fn form_input_char(form: &mut Form, c: char) {
+    if form.focused == 0 {
+        if c.is_ascii_digit() {
+            let mut digits: String =
+                form.fields[0].value.chars().filter(|c| c.is_ascii_digit()).collect();
+            if digits.len() < 10 {
+                digits.push(c);
+                form.fields[0].value = format_cnuc(&digits);
+            }
+        }
+    } else {
+        form.fields[form.focused].push(c);
+    }
+}
+
+/// Apaga o último caractere do campo em foco. No CNUC, remove o último dígito
+/// e reaplica a máscara (descartando o ponto, quando for o caso).
+fn form_input_backspace(form: &mut Form) {
+    if form.focused == 0 {
+        let mut digits: String =
+            form.fields[0].value.chars().filter(|c| c.is_ascii_digit()).collect();
+        digits.pop();
+        form.fields[0].value = format_cnuc(&digits);
+    } else {
+        form.fields[form.focused].pop();
     }
 }
 
@@ -124,7 +176,7 @@ pub struct App {
 /// Rótulos dos campos do formulário de criação/edição, na ordem dos índices
 /// usados em `create.fields[i]` (0 = CNUC, 2 = Data, 5 = KM, 10 = Área Total).
 pub const CREATE_LABELS: &[&str] = &[
-    "CNUC (12 chars)*",
+    "CNUC (XXXX.XX.XXXX)*",
     "Nome",
     "Data Criação (DD-MM-YYYY)",
     "Bioma",
@@ -340,8 +392,8 @@ impl App {
             KeyCode::BackTab => self.create.prev(),
             KeyCode::Enter => self.submit_edit(),
             // CNUC (índice 0) é editável: a troca da PK é propagada pelo backend.
-            KeyCode::Char(c) => self.create.fields[self.create.focused].push(c),
-            KeyCode::Backspace => self.create.fields[self.create.focused].pop(),
+            KeyCode::Char(c) => form_input_char(&mut self.create, c),
+            KeyCode::Backspace => form_input_backspace(&mut self.create),
             _ => {}
         }
     }
@@ -380,8 +432,8 @@ impl App {
             KeyCode::Tab => self.create.next(),
             KeyCode::BackTab => self.create.prev(),
             KeyCode::Enter => self.submit_create(),
-            KeyCode::Char(c) => self.create.fields[self.create.focused].push(c),
-            KeyCode::Backspace => self.create.fields[self.create.focused].pop(),
+            KeyCode::Char(c) => form_input_char(&mut self.create, c),
+            KeyCode::Backspace => form_input_backspace(&mut self.create),
             _ => {}
         }
     }
@@ -390,11 +442,7 @@ impl App {
     /// Erros da API caem em `status` via [`api::create_unidade`].
     fn submit_create(&mut self) {
         let cnuc = self.create.fields[0].value.clone();
-        if cnuc.len() != 12 {
-            self.status = "Erro: CNUC deve ter exatamente 12 caracteres!".into();
-            return;
-        }
-        if let Err(e) = check_cnuc_digits(&cnuc) {
+        if let Err(e) = check_cnuc_format(&cnuc) {
             self.status = e;
             return;
         }
@@ -456,11 +504,7 @@ impl App {
     /// o CNUC antigo (`editing_cnuc`) vai na rota; o novo, do formulário, no corpo.
     fn submit_edit(&mut self) {
         let new_cnuc = self.create.fields[0].value.clone();
-        if new_cnuc.len() != 12 {
-            self.status = "Erro: CNUC deve ter exatamente 12 caracteres!".into();
-            return;
-        }
-        if let Err(e) = check_cnuc_digits(&new_cnuc) {
+        if let Err(e) = check_cnuc_format(&new_cnuc) {
             self.status = e;
             return;
         }
@@ -528,8 +572,8 @@ impl App {
             KeyCode::Tab => self.filter.next(),
             KeyCode::BackTab => self.filter.prev(),
             KeyCode::Enter => self.submit_filter(),
-            KeyCode::Char(c) => self.filter.fields[self.filter.focused].push(c),
-            KeyCode::Backspace => self.filter.fields[self.filter.focused].pop(),
+            KeyCode::Char(c) => form_input_char(&mut self.filter, c),
+            KeyCode::Backspace => form_input_backspace(&mut self.filter),
             _ => {}
         }
     }
@@ -537,7 +581,8 @@ impl App {
     /// Coleta os campos de filtro e dispara a consulta via [`Self::fetch_units`].
     fn submit_filter(&mut self) {
         if let Some(cnuc) = self.filter.val(0) {
-            if let Err(e) = check_cnuc_digits(&cnuc) {
+            // Busca exige o CNUC completo (a API rejeita CNUC parcial).
+            if let Err(e) = check_cnuc_format(&cnuc) {
                 self.status = e;
                 return;
             }

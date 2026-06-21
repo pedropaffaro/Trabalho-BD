@@ -179,7 +179,7 @@ Com o backend no ar, é possível exercitar a API diretamente via `curl` (útil 
 # Criar uma unidade
 curl -X POST http://localhost:8000/unidades \
   -H "Content-Type: application/json" \
-  -d '{"cnuc":"000123456789","nome":"Parque Nacional do Iguaçu","data_criacao":"10-01-1939","uf":"PR","area_total":185262.20}'
+  -d '{"cnuc":"0795.50.4329","nome":"Parque Nacional do Iguaçu","data_criacao":"10-01-1939","uf":"PR","area_total":185262.20}'
 
 # Listar todas as unidades
 curl http://localhost:8000/unidades
@@ -191,12 +191,12 @@ curl "http://localhost:8000/unidades?nome=Iguaçu&bioma=Mata"
 curl "http://localhost:8000/unidades?bioma=null"
 
 # Atualizar uma unidade
-curl -X PUT http://localhost:8000/unidades/000123456789 \
+curl -X PUT http://localhost:8000/unidades/0795.50.4329 \
   -H "Content-Type: application/json" \
   -d '{"nome":"PARNA do Iguaçu","uf":"PR"}'
 
 # Excluir uma unidade
-curl -X DELETE http://localhost:8000/unidades/000123456789
+curl -X DELETE http://localhost:8000/unidades/0795.50.4329
 ```
 
 Para validar os erros descritivos (ex: data ou CNUC inválidos), basta enviar valores fora do formato esperado:
@@ -205,7 +205,7 @@ Para validar os erros descritivos (ex: data ou CNUC inválidos), basta enviar va
 # Data inválida → 422 com mensagem do campo data_criacao
 curl -X POST http://localhost:8000/unidades \
   -H "Content-Type: application/json" \
-  -d '{"cnuc":"000123456789","data_criacao":"32-13-2026"}'
+  -d '{"cnuc":"0795.50.4329","data_criacao":"32-13-2026"}'
 ```
 
 ## Como Usar a API
@@ -235,7 +235,7 @@ Submete uma nova UC para validação e armazenamento.
 
 | Campo | Tipo | Obrigatório | Restrições |
 |-------|------|:-----------:|-----------|
-| `cnuc` | string | ✅ | Exatamente 12 dígitos numéricos |
+| `cnuc` | string | ✅ | 10 dígitos no formato XXXX.XX.XXXX (12 caracteres) |
 | `nome` | string | — | Até 100 caracteres |
 | `data_criacao` | string | — | `DD-MM-AAAA` (também aceita `AAAA-MM-DD`) |
 | `bioma` | string | — | Até 30 caracteres |
@@ -251,7 +251,7 @@ Submete uma nova UC para validação e armazenamento.
 
 ```json
 {
-  "cnuc": "000123456789",
+  "cnuc": "0795.50.4329",
   "nome": "Parque Nacional do Iguaçu",
   "data_criacao": "10-01-1939",
   "bioma": "Mata Atlântica",
@@ -288,7 +288,7 @@ Pesquisa por unidades de conservação com filtros parametrizados combinados pel
 
 | Parâmetro | Tipo | Correspondência | Formato |
 |-----------|------|-----------------|---------|
-| `cnuc` | string | exata | 12 dígitos |
+| `cnuc` | string | exata | `XXXX.XX.XXXX` (12 caracteres) |
 | `nome` | string | parcial (`ILIKE`) | — |
 | `bioma` | string | parcial (`ILIKE`) | — |
 | `orgao_gestor` | string | parcial (`ILIKE`) | — |

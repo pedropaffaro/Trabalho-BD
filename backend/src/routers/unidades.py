@@ -43,7 +43,7 @@ def _add_condition(
 # Mapeia o nome da constraint do PostgreSQL para uma mensagem amigável.
 _CONSTRAINT_MSGS: dict[str, str] = {
     "pk_unidade_conservacao": "Já existe uma unidade com este CNUC.",
-    "ck_cnuc_formato": "CNUC deve conter exatamente 12 dígitos numéricos.",
+    "ck_cnuc_formato": "CNUC deve estar no formato XXXX.XX.XXXX (ex: 0795.50.4329).",
     "ck_area_total": "Área total deve ser maior ou igual a zero.",
     "ck_km_valido": "KM deve ser um valor entre 0 e 9999.",
     "ck_uf": "UF inválida. Use uma sigla de estado brasileiro (ex: SP).",
@@ -195,6 +195,13 @@ async def listar_unidades(
     i = 1
 
     if cnuc:  # CNUC: busca exata (é a PK)
+        # Não permite busca com CNUC incompleto: precisa dos 12 caracteres
+        # (10 dígitos + 2 pontos) no formato XXXX.XX.XXXX.
+        if len(cnuc) < 12:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CNUC para busca deve ter 12 caracteres no formato XXXX.XX.XXXX (ex: 0795.50.4329).",
+            )
         conditions.append(f"cnuc = ${i}")
         params.append(cnuc)
         i += 1

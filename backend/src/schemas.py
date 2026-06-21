@@ -1,13 +1,17 @@
+import re
 from pydantic import BaseModel, Field, field_validator, field_serializer
 from typing import Optional
 from datetime import date, datetime
 from decimal import Decimal
 
+# CNUC: 10 dígitos no formato oficial XXXX.XX.XXXX (12 caracteres com os pontos).
+_CNUC_REGEX = re.compile(r"^\d{4}\.\d{2}\.\d{4}$")
+
 
 class UnidadeCreate(BaseModel):
-    # Sem min/max_length: a validação é feita no validator abaixo para garantir
-    # mensagem de erro em português (o constraint do Pydantic emitiria em inglês).
-    cnuc: str = Field(..., examples=["000123456789"])
+    # Validação no validator abaixo para garantir mensagem em português e o
+    # formato oficial com pontos.
+    cnuc: str = Field(..., examples=["0795.50.4329"])
     nome: Optional[str] = Field(
         None, max_length=100, example="Parque Nacional do Iguaçu"
     )
@@ -17,8 +21,8 @@ class UnidadeCreate(BaseModel):
     @field_validator("cnuc")
     @classmethod
     def valida_cnuc(cls, v):
-        if not (v.isdigit() and len(v) == 12):
-            raise ValueError("CNUC deve conter exatamente 12 dígitos numéricos.")
+        if not _CNUC_REGEX.match(v):
+            raise ValueError("CNUC deve estar no formato XXXX.XX.XXXX (ex: 0795.50.4329).")
         return v
 
     # mode="before": roda antes da coerção do Pydantic, aceitando a data em

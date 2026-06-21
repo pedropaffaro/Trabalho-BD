@@ -21,11 +21,11 @@ GROUP BY F.unidade_conservacao;
 
 | unidade_conservacao | nro_funcionarios_multicategoricos |
 |---|---|
-| 000000000001 | 2 |
-| 000000000002 | 2 |
-| 000000000003 | 2 |
-| 000000000004 | 2 |
-| 000000000012 | 1 |
+| 0000.00.0001 | 2 |
+| 0000.00.0002 | 2 |
+| 0000.00.0003 | 2 |
+| 0000.00.0004 | 2 |
+| 0000.00.0012 | 1 |
 
 ---
 
@@ -78,8 +78,8 @@ WHERE V.guia IS NOT NULL
 
 | cod_visita | unidade_conservacao | nro_zona | nro_visita | data_hora | tipo | nro_visitantes | guia |
 |---|---|---|---|---|---|---|---|
-| 11 | 000000000001 | 2 | 104 | 2026-06-18 10:00:00 | EDUCATIVA | 2 | 1003 |
-| 13 | 000000000002 | 2 | 204 | 2026-06-22 09:00:00 | EDUCATIVA | 3 | 2002 |
+| 11 | 0000.00.0001 | 2 | 104 | 2026-06-18 10:00:00 | EDUCATIVA | 2 | 1003 |
+| 13 | 0000.00.0002 | 2 | 204 | 2026-06-22 09:00:00 | EDUCATIVA | 3 | 2002 |
 
 > `cod_visita` depende da ordem de inserção (coluna IDENTITY); os valores acima
 > assumem a carga padrão de `dados.sql`.
