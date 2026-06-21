@@ -1,3 +1,6 @@
+//! Ponto de entrada da TUI: configura o terminal (raw mode + tela alternativa),
+//! roda o loop de eventos e restaura o terminal ao sair.
+
 use std::io;
 
 use crossterm::{
@@ -39,6 +42,8 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Loop principal: redesenha a cada iteração, lê teclas e as repassa ao `App`.
+/// Sai em `Ctrl+C` ou quando `app.should_quit` é setado.
 fn run_app<B: ratatui::backend::Backend>(
     terminal: &mut Terminal<B>,
     app: &mut app::App,

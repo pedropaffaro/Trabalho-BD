@@ -29,10 +29,10 @@ Trabalho-BD/
 ├── backend/
 │   ├── src/
 │   │   ├── routers/          # Definição das rotas/endpoints da API
-|   │   │   └── unidades.py  
+|   │   │   └── unidades.py    # CRUD de unidades de conservação (GET/POST/PUT/DELETE)
 │   │   ├── schemas.py        # Modelos Pydantic para validação de entrada/saída
 │   │   ├── database.py       # Configuração e gerenciamento do pool de conexão com o banco
-│   │   └── main.py           # 
+│   │   └── main.py           # Instancia o FastAPI e registra os routers
 │   ├── .env.example          # Modelo de configuração das variáveis de ambiente
 │   ├── Dockerfile            # Configuração da imagem Docker do backend
 │   └── requirements.txt      # Dependências Python do projeto
@@ -40,8 +40,13 @@ Trabalho-BD/
 |   ├── consultas.sql         # Arquivo com as 5 consultas
 |   ├── dados.sql             # Ingestão de dados
 │   └── esquema.sql           # Script DDL com a criação das tabelas com suas respectivas constraints
-├── interface/
-| ...
+├── interface/                # TUI em Rust (ratatui + reqwest) que consome a API
+|   ├── src/
+|   │   ├── main.rs           # Setup do terminal e loop de eventos
+|   │   ├── app.rs            # Estado da aplicação e lógica de teclado
+|   │   ├── api.rs            # Cliente HTTP da API e extração de mensagens de erro
+|   │   └── ui.rs             # Renderização das telas (tabela, formulários, status)
+|   └── Cargo.toml            # Dependências Rust do projeto
 ├── .dockerignore             # Arquivo para evitar o envio de lixo local para o Docker
 ├── docker-compose.yml        # Conecta os contêineres da aplicação
 └── Makefile                  # Diretivas de comandos
@@ -129,7 +134,7 @@ docker compose -p trabalho_bd exec db sh -c 'psql -U pessoa -d trabalho_bd'
 
 ## Como Iniciar a Interface via Terminal
 
-## Ambiente
+A TUI consome a API em `http://localhost:8000`, portanto **o backend precisa estar no ar** (passos anteriores) antes de abrir a interface.
 
 Navegue até o diretório interno _/interface_ contido na raiz do projeto:
 
@@ -139,13 +144,69 @@ cd interface
 
 Dentro dele, execute os dois comandos:
 ```bash
-#baixa as dependências e compila o projeto
+# baixa as dependências e compila o projeto
 cargo build
 
-#executa o projeto
+# executa o projeto
 cargo run
 ```
-Para finalizar, apenas utilize o comando _Cntl + C_.
+
+Para finalizar, utilize _Ctrl + C_ ou a tecla `q` na tela de listagem.
+
+### Atalhos de Teclado
+
+| Tela | Tecla | Ação |
+|------|-------|------|
+| Lista | `j` / `k` ou `↓` / `↑` | Navegar entre unidades |
+| Lista | `n` | Nova unidade |
+| Lista | `e` | Editar unidade selecionada |
+| Lista | `d` | Excluir unidade selecionada |
+| Lista | `/` | Abrir filtros de busca |
+| Lista | `r` | Recarregar lista |
+| Lista | `Esc` | Limpar filtros |
+| Lista | `q` | Sair |
+| Formulários | `Tab` / `Shift+Tab` | Navegar entre campos |
+| Formulários | `Enter` | Confirmar (criar/salvar/buscar) |
+| Formulários | `Esc` | Cancelar |
+
+> Nos filtros, digite `null` em um campo para buscar unidades com aquele dado vazio.
+
+## Exemplos de Uso e Testes
+
+Com o backend no ar, é possível exercitar a API diretamente via `curl` (útil para testes rápidos sem a TUI):
+
+```bash
+# Criar uma unidade
+curl -X POST http://localhost:8000/unidades \
+  -H "Content-Type: application/json" \
+  -d '{"cnuc":"000123456789","nome":"Parque Nacional do Iguaçu","data_criacao":"10-01-1939","uf":"PR","area_total":185262.20}'
+
+# Listar todas as unidades
+curl http://localhost:8000/unidades
+
+# Listar com filtros (parcial no nome + bioma)
+curl "http://localhost:8000/unidades?nome=Iguaçu&bioma=Mata"
+
+# Buscar unidades sem bioma cadastrado
+curl "http://localhost:8000/unidades?bioma=null"
+
+# Atualizar uma unidade
+curl -X PUT http://localhost:8000/unidades/000123456789 \
+  -H "Content-Type: application/json" \
+  -d '{"nome":"PARNA do Iguaçu","uf":"PR"}'
+
+# Excluir uma unidade
+curl -X DELETE http://localhost:8000/unidades/000123456789
+```
+
+Para validar os erros descritivos (ex: data ou CNUC inválidos), basta enviar valores fora do formato esperado:
+
+```bash
+# Data inválida → 422 com mensagem do campo data_criacao
+curl -X POST http://localhost:8000/unidades \
+  -H "Content-Type: application/json" \
+  -d '{"cnuc":"000123456789","data_criacao":"32-13-2026"}'
+```
 
 ## Como Usar a API
 
@@ -170,17 +231,37 @@ Submete uma nova UC para validação e armazenamento.
 | **Método** | `POST` |
 | **Rota** | `/unidades` |
 
+**Campos do corpo (JSON):**
+
+| Campo | Tipo | Obrigatório | Restrições |
+|-------|------|:-----------:|-----------|
+| `cnuc` | string | ✅ | Exatamente 12 dígitos numéricos |
+| `nome` | string | — | Até 100 caracteres |
+| `data_criacao` | string | — | `DD-MM-AAAA` (também aceita `AAAA-MM-DD`) |
+| `bioma` | string | — | Até 30 caracteres |
+| `rodovia` | string | — | Até 6 caracteres (ex: `BR 469`) |
+| `km` | inteiro | — | Entre 0 e 9999 |
+| `cidade` | string | — | Até 50 caracteres |
+| `uf` | string | — | Sigla de estado brasileiro (2 letras) |
+| `descricao_acesso` | string | — | Até 255 caracteres |
+| `orgao_gestor` | string | — | Até 100 caracteres |
+| `area_total` | número | — | `>= 0` (default `0.00`) |
+
 **Exemplo de corpo da requisição:**
 
 ```json
 {
-  "cnuc": "123456789012",
-  "nome": "Parque Nacional da Serra do Cipó",
-  "data_criacao": "1984-09-25",
-  "bioma": "Cerrado",
-  "endereco": "Minas Gerais, Brasil",
+  "cnuc": "000123456789",
+  "nome": "Parque Nacional do Iguaçu",
+  "data_criacao": "10-01-1939",
+  "bioma": "Mata Atlântica",
+  "rodovia": "BR 469",
+  "km": 18,
+  "cidade": "Foz do Iguaçu",
+  "uf": "PR",
+  "descricao_acesso": "Acesso pela marginal da rodovia",
   "orgao_gestor": "ICMBio",
-  "area_total": 33800.00
+  "area_total": 185262.20
 }
 ```
 
@@ -188,35 +269,81 @@ Submete uma nova UC para validação e armazenamento.
 
 | Código | Descrição |
 |--------|-----------|
-| `201 Created` | Sucesso. Retorna o JSON do registo inserido. |
-| `409 Conflict` | O código `cnuc` fornecido já existe no sistema. |
-| `422 Unprocessable Entity` | Falha na validação de dados. |
+| `201 Created` | Sucesso. Retorna o JSON do registro inserido. |
+| `409 Conflict` | O `cnuc` fornecido já existe no sistema. |
+| `422 Unprocessable Entity` | Falha de validação (ex: CNUC fora do formato, data inválida, `km`/`area_total` fora do intervalo, UF inválida). |
 
 ---
 
 #### B. Listar Unidades com Filtros Dinâmicos
 
-Pesquisa por unidades de conservação com filtros parametrizados a partir do operador lógico `AND`, ou seja, deve atender a todos os critérios, quando existirem.
+Pesquisa por unidades de conservação com filtros parametrizados combinados pelo operador lógico `AND` — o registro deve atender a todos os critérios informados.
 
 | Campo | Valor |
 |-------|-------|
 | **Método** | `GET` |
 | **Rota** | `/unidades` |
 
-**Parâmetros de busca:**
+**Parâmetros de busca (query string):**
 
-| Parâmetro | Tipo | Formato |
-|-----------|------|---------|
-| `nome` | string | — |
-| `bioma` | string | — |
-| `orgao_gestor` | string | — |
-| `data_criacao` | date | `YYYY-MM-DD` |
+| Parâmetro | Tipo | Correspondência | Formato |
+|-----------|------|-----------------|---------|
+| `cnuc` | string | exata | 12 dígitos |
+| `nome` | string | parcial (`ILIKE`) | — |
+| `bioma` | string | parcial (`ILIKE`) | — |
+| `orgao_gestor` | string | parcial (`ILIKE`) | — |
+| `data_criacao` | string | exata | `DD-MM-AAAA` (também aceita `AAAA-MM-DD`) |
+| `rodovia` | string | parcial (`ILIKE`) | — |
+| `cidade` | string | parcial (`ILIKE`) | — |
+| `uf` | string | exata | 2 letras |
+| `km` | inteiro | exata | 0 a 9999 |
 
-> Vale destacar que esses parâmetros são opcionais, ou seja, caso nenhum deles seja colocado na consulta, será realizada a consulta de todas as unidades cadastradas
+> Todos os parâmetros são opcionais: sem nenhum filtro, retorna todas as unidades cadastradas. O valor literal `null` em qualquer parâmetro busca registros cuja coluna correspondente esteja vazia (`IS NULL`).
 
 **Retornos mapeados:**
 
 | Código | Descrição |
 |--------|-----------|
-| `200 OK` | Retorna uma lista com todas as unidades correspondentes aos critérios. |
-| `404 Not Found` | Nenhum registo atende aos filtros aplicados. |
+| `200 OK` | Retorna a lista de unidades correspondentes aos critérios. |
+| `400 Bad Request` | `data_criacao` ou `km` em formato inválido. |
+| `404 Not Found` | Nenhum registro atende aos filtros aplicados. |
+
+---
+
+#### C. Atualizar Unidade
+
+Atualiza todos os campos de uma unidade existente, identificada pelo `cnuc` na URL (o CNUC em si é imutável).
+
+| Campo | Valor |
+|-------|-------|
+| **Método** | `PUT` |
+| **Rota** | `/unidades/{cnuc}` |
+
+O corpo segue o mesmo schema do `POST` (exceto o `cnuc`, que vem na rota).
+
+**Retornos mapeados:**
+
+| Código | Descrição |
+|--------|-----------|
+| `200 OK` | Sucesso. Retorna o JSON do registro atualizado. |
+| `404 Not Found` | Não existe unidade com o `cnuc` informado. |
+| `422 Unprocessable Entity` | Falha de validação dos campos enviados. |
+
+---
+
+#### D. Excluir Unidade
+
+Remove a unidade identificada pelo `cnuc`.
+
+| Campo | Valor |
+|-------|-------|
+| **Método** | `DELETE` |
+| **Rota** | `/unidades/{cnuc}` |
+
+**Retornos mapeados:**
+
+| Código | Descrição |
+|--------|-----------|
+| `200 OK` | Sucesso. Retorna o JSON do registro excluído. |
+| `404 Not Found` | Não existe unidade com o `cnuc` informado. |
+| `422 Unprocessable Entity` | Existem registros vinculados em outras tabelas (violação de chave estrangeira). |

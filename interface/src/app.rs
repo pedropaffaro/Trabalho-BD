@@ -1,8 +1,15 @@
+//! Estado e lógica de interação da TUI (modelo no padrão "the elm/MVU").
+//!
+//! [`App`] guarda todo o estado; [`App::handle_key`] roteia as teclas para o
+//! handler da tela atual ([`Screen`]); as ações que tocam a rede delegam ao
+//! módulo [`crate::api`] e gravam o resultado em `status` para o `ui` exibir.
+
 use crossterm::event::KeyCode;
 use ratatui::widgets::TableState;
 
 use crate::api::{self, CreateUnidade, FilterParams, Unidade};
 
+/// Tela atualmente em foco; decide renderização e roteamento de teclas.
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum Screen {
     List,
@@ -12,6 +19,7 @@ pub enum Screen {
     DeleteConfirm,
 }
 
+/// Campo de texto editável de um formulário.
 #[derive(Default, Clone)]
 pub struct Input {
     pub value: String,
@@ -31,6 +39,7 @@ impl Input {
     }
 }
 
+/// Conjunto de campos navegáveis por Tab, com índice do campo em foco.
 pub struct Form {
     pub fields: Vec<Input>,
     pub focused: usize,
@@ -59,6 +68,7 @@ impl Form {
         self.focused = (self.focused + self.fields.len() - 1) % self.fields.len();
     }
 
+    /// Valor do campo `i`, ou `None` quando vazio (mapeado para omissão no JSON).
     pub fn val(&self, i: usize) -> Option<String> {
         let v = &self.fields[i].value;
         if v.is_empty() {
@@ -69,19 +79,29 @@ impl Form {
     }
 }
 
+/// Estado global da aplicação. `create` é reaproveitado nas telas Create e Edit.
 pub struct App {
     pub screen: Screen,
+    /// Unidades atualmente carregadas e exibidas na tabela.
     pub units: Vec<Unidade>,
     pub table_state: TableState,
+    /// Formulário de criação/edição (mesmos campos em ambos os modos).
     pub create: Form,
+    /// Formulário de filtros da busca.
     pub filter: Form,
+    /// Filtros ativos aplicados na última consulta.
     pub filters: FilterParams,
+    /// Linha de status / barra de mensagens (sucesso, erro ou dica). Um por vez.
     pub status: String,
     pub should_quit: bool,
+    /// CNUC da unidade em edição (campo bloqueado, é a PK).
     pub editing_cnuc: String,
+    /// CNUC pendente de confirmação de exclusão.
     pub delete_cnuc: String,
 }
 
+/// Rótulos dos campos do formulário de criação/edição, na ordem dos índices
+/// usados em `create.fields[i]` (0 = CNUC, 2 = Data, 5 = KM, 10 = Área Total).
 pub const CREATE_LABELS: &[&str] = &[
     "CNUC (12 chars)*",
     "Nome",
@@ -96,6 +116,7 @@ pub const CREATE_LABELS: &[&str] = &[
     "Área Total",
 ];
 
+/// Rótulos dos campos de filtro, na ordem dos índices em `filter.fields[i]`.
 pub const FILTER_LABELS: &[&str] = &[
     "CNUC",
     "Nome",
@@ -109,6 +130,7 @@ pub const FILTER_LABELS: &[&str] = &[
 ];
 
 impl App {
+    /// Inicializa o estado e já faz a primeira carga das unidades.
     pub fn new() -> Self {
         let mut app = Self {
             screen: Screen::List,
@@ -129,6 +151,7 @@ impl App {
         app
     }
 
+    /// Consulta a API com os filtros atuais e atualiza `units`/`status`.
     pub fn fetch_units(&mut self) -> Result<usize, String> {
         match api::list_unidades(&self.filters) {
             Ok(units) => {
@@ -156,6 +179,7 @@ impl App {
         }
     }
 
+    /// Limpa todos os filtros e recarrega a lista completa.
     fn reset_filter(&mut self) {
         self.filters = FilterParams::default();
 
@@ -168,6 +192,7 @@ impl App {
         self.table_state.select(Some(0));
     }
 
+    /// Ponto de entrada de teclado: despacha para o handler da tela ativa.
     pub fn handle_key(&mut self, key: KeyCode) {
         match self.screen {
             Screen::List => self.handle_list(key),
@@ -242,6 +267,7 @@ impl App {
         self.table_state.select(Some(prev));
     }
 
+    /// Abre a tela de edição preenchendo o formulário com a unidade selecionada.
     fn start_edit(&mut self) {
         let Some(unit) = self.table_state.selected().and_then(|i| self.units.get(i)) else {
             self.status = "Selecione uma unidade para editar.".into();
@@ -262,9 +288,13 @@ impl App {
         self.create.fields[10].value = unit.area_total_str().replace('-', "");
         self.create.focused = 1;
         self.screen = Screen::Edit;
-        self.status = format!("Editando '{}'  [Tab] Próximo  [Enter] Salvar  [Esc] Cancelar", self.editing_cnuc);
+        self.status = format!(
+            "Editando '{}'  [Tab] Próximo  [Enter] Salvar  [Esc] Cancelar",
+            self.editing_cnuc
+        );
     }
 
+    /// Abre o diálogo de confirmação de exclusão para a unidade selecionada.
     fn start_delete(&mut self) {
         let Some(unit) = self.table_state.selected().and_then(|i| self.units.get(i)) else {
             self.status = "Selecione uma unidade para excluir.".into();
@@ -273,7 +303,10 @@ impl App {
         self.delete_cnuc = unit.cnuc.trim().to_string();
         let nome = unit.nome.clone().unwrap_or_else(|| "—".into());
         self.screen = Screen::DeleteConfirm;
-        self.status = format!("Confirmar exclusão de '{}' ({})?  [s] Sim  [n/Esc] Não", self.delete_cnuc, nome);
+        self.status = format!(
+            "Confirmar exclusão de '{}' ({})?  [s] Sim  [n/Esc] Não",
+            self.delete_cnuc, nome
+        );
     }
 
     fn handle_edit(&mut self, key: KeyCode) {
@@ -340,6 +373,8 @@ impl App {
         }
     }
 
+    /// Valida os campos no cliente, monta o payload e chama POST `/unidades`.
+    /// Erros da API caem em `status` via [`api::create_unidade`].
     fn submit_create(&mut self) {
         let cnuc = self.create.fields[0].value.clone();
         if cnuc.len() != 12 {
@@ -396,6 +431,7 @@ impl App {
         }
     }
 
+    /// Monta o payload e chama PUT `/unidades/{cnuc}` (CNUC imutável).
     fn submit_edit(&mut self) {
         let km = match self.create.val(5) {
             None => None,
@@ -462,6 +498,7 @@ impl App {
         }
     }
 
+    /// Coleta os campos de filtro e dispara a consulta via [`Self::fetch_units`].
     fn submit_filter(&mut self) {
         self.filters = FilterParams {
             cnuc: self.filter.val(0),
@@ -486,7 +523,7 @@ impl App {
                 }
             }
             Err(e) => {
-                self.status = format!("Erro ao atualizar: {e}");
+                self.status = format!("Erro ao filtrar: {e}");
                 return;
             }
         }

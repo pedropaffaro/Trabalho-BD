@@ -1,3 +1,6 @@
+//! Renderização da TUI. Funções puras de desenho: leem o [`App`] e produzem
+//! os widgets do ratatui, sem alterar estado (exceto `TableState` de seleção).
+
 use ratatui::{
     layout::{Constraint, Layout, Position, Rect},
     style::{Color, Modifier, Style, Stylize},
@@ -14,6 +17,7 @@ const YELLOW: Color = Color::Yellow;
 const DARK_GRAY: Color = Color::DarkGray;
 const RED: Color = Color::Red;
 
+/// Desenha a tela inteira: área principal (conforme `app.screen`) + barra de status.
 pub fn render(frame: &mut Frame, app: &mut App) {
     let [main, status_bar] =
         Layout::vertical([Constraint::Min(3), Constraint::Length(1)]).areas(frame.area());
@@ -172,6 +176,8 @@ fn render_detail(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(content, area);
 }
 
+/// Formulário genérico (Create/Edit/Filter): rótulos + caixas de input, cursor
+/// no campo em foco e dica de teclas ao pé. O campo CNUC ganha contador `[n/12]`.
 fn render_form(
     frame: &mut Frame,
     app: &mut App,
@@ -292,6 +298,8 @@ fn render_form(
     }
 }
 
+/// Barra de status: colore a mensagem (vermelho p/ erro, verde p/ sucesso,
+/// amarelo p/ em-progresso) e anexa as dicas de atalho na tela de lista.
 fn render_status(frame: &mut Frame, app: &App, area: Rect) {
     // On create/edit form: always show CNUC counter on the left with color
     if app.screen == Screen::Create || app.screen == Screen::Edit {
@@ -395,6 +403,7 @@ fn render_delete_confirm(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(Paragraph::new(lines), inner);
 }
 
+/// Monta o texto `chave=valor, ...` dos filtros ativos para o título da tabela.
 fn build_filter_label(app: &App) -> String {
     let active: &[(&str, &Option<String>)] = &[
         ("cnuc", &app.filters.cnuc),

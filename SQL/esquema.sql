@@ -15,6 +15,9 @@ CREATE TABLE unidade_conservacao (
     CONSTRAINT pk_unidade_conservacao 
         PRIMARY KEY (cnuc),
 
+    CONSTRAINT ck_cnuc_formato
+        CHECK (cnuc ~ '^[0-9]{12}$'),
+
     CONSTRAINT ck_area_total 
         CHECK (area_total >= 0),
 
@@ -151,7 +154,7 @@ CREATE TABLE funcionario_categoria (
 
     CONSTRAINT fk_funcionario_categoria_funcionario
         FOREIGN KEY (funcionario) REFERENCES funcionario (nro_funcional)
-        ON DELETE CASCADE ON UPDATE CASCADE,
+        ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE visitante (

@@ -9,9 +9,12 @@ from schemas import UnidadeCreate, UnidadeResponse
 router = APIRouter(prefix="/unidades", tags=["Unidades de Conservação"])
 
 
+# Sentinela: o literal "null" nos filtros busca registros com a coluna NULL.
 def _is_null_search(value: Optional[str]) -> bool:
     return value is not None and value.strip().lower() == "null"
 
+# Acumula uma condição WHERE parametrizada ($i) e retorna o próximo índice.
+# exact=True compara por igualdade; caso contrário usa ILIKE (busca parcial).
 def _add_condition(
     field: str,
     value: Optional[str],
@@ -36,13 +39,17 @@ def _add_condition(
     return i
 
 
+# Mapeia o nome da constraint do PostgreSQL para uma mensagem amigável.
 _CONSTRAINT_MSGS: dict[str, str] = {
     "pk_unidade_conservacao": "Já existe uma unidade com este CNUC.",
+    "ck_cnuc_formato":        "CNUC deve conter exatamente 12 dígitos numéricos.",
     "ck_area_total":          "Área total deve ser maior ou igual a zero.",
-    "ck_km_valido":           "KM deve ser um valor entre 0 e 999.",
+    "ck_km_valido":           "KM deve ser um valor entre 0 e 9999.",
+    "ck_uf":                  "UF inválida. Use uma sigla de estado brasileiro (ex: SP).",
 }
 
 
+# Converte erros do asyncpg em HTTPException com status e mensagem adequados.
 def _db_error_to_http(e: Exception, cnuc: str = "") -> HTTPException:
     if isinstance(e, asyncpg.UniqueViolationError):
         constraint = getattr(e, "constraint_name", "")
