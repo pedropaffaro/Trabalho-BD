@@ -257,17 +257,20 @@ async def atualizar_unidade(
     payload: UnidadeCreate,
     pool: asyncpg.Pool = Depends(get_env_pool),
 ):
+    # O CNUC é a PK: atualizá-lo é permitido e propaga via ON UPDATE CASCADE.
+    # $1 = novo CNUC (payload); $12 = CNUC atual (rota), usado no WHERE.
     sql = """
         UPDATE unidade_conservacao
-        SET nome = $1, data_criacao = $2, bioma = $3, rodovia = $4, km = $5,
-            cidade = $6, uf = $7, descricao_acesso = $8, orgao_gestor = $9, area_total = $10
-        WHERE cnuc = $11
+        SET cnuc = $1, nome = $2, data_criacao = $3, bioma = $4, rodovia = $5, km = $6,
+            cidade = $7, uf = $8, descricao_acesso = $9, orgao_gestor = $10, area_total = $11
+        WHERE cnuc = $12
         RETURNING *
     """
     try:
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 sql,
+                payload.cnuc,
                 payload.nome,
                 payload.data_criacao,
                 payload.bioma,

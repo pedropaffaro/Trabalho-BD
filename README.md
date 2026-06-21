@@ -312,14 +312,14 @@ Pesquisa por unidades de conservação com filtros parametrizados combinados pel
 
 #### C. Atualizar Unidade
 
-Atualiza todos os campos de uma unidade existente, identificada pelo `cnuc` na URL (o CNUC em si é imutável).
+Atualiza todos os campos de uma unidade existente, identificada pelo `cnuc` na URL. O próprio `cnuc` também pode ser alterado: o `cnuc` da rota identifica o registro atual e o `cnuc` do corpo define o novo valor (a troca da PK é propagada via `ON UPDATE CASCADE`).
 
 | Campo | Valor |
 |-------|-------|
 | **Método** | `PUT` |
 | **Rota** | `/unidades/{cnuc}` |
 
-O corpo segue o mesmo schema do `POST` (exceto o `cnuc`, que vem na rota).
+O corpo segue o mesmo schema do `POST`.
 
 **Retornos mapeados:**
 
@@ -327,6 +327,7 @@ O corpo segue o mesmo schema do `POST` (exceto o `cnuc`, que vem na rota).
 |--------|-----------|
 | `200 OK` | Sucesso. Retorna o JSON do registro atualizado. |
 | `404 Not Found` | Não existe unidade com o `cnuc` informado. |
+| `409 Conflict` | O novo `cnuc` já pertence a outra unidade. |
 | `422 Unprocessable Entity` | Falha de validação dos campos enviados. |
 
 ---

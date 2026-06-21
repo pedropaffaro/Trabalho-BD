@@ -387,7 +387,7 @@ CREATE TABLE observacao (
 
     CONSTRAINT fk_observacao_zona
         FOREIGN KEY (unidade_conservacao, nro_zona) REFERENCES zona (unidade_conservacao, nro_zona)
-        ON DELETE CASCADE,
+        ON DELETE CASCADE ON UPDATE CASCADE, -- ON UPDATE propaga a troca do CNUC (PK) da unidade via zona
 
     CONSTRAINT ck_observacao_metodo
         CHECK (UPPER(metodo) IN ('CAMERA', 'VISUAL', 'BINOCULO', 'GRAVACAO DE AUDIO', 'SINAIS BIOLOGICOS')),
@@ -417,7 +417,7 @@ CREATE TABLE ocorrencia (
 
     CONSTRAINT fk_ocorrencia_zona
         FOREIGN KEY (unidade_conservacao, nro_zona) REFERENCES zona (unidade_conservacao, nro_zona)
-        ON DELETE CASCADE,
+        ON DELETE CASCADE ON UPDATE CASCADE, -- ON UPDATE propaga a troca do CNUC (PK) da unidade via zona
     
     CONSTRAINT fk_ocorrencia_fiscal
         FOREIGN KEY (fiscal) REFERENCES funcionario (nro_funcional)
