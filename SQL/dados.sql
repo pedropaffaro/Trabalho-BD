@@ -259,6 +259,7 @@ INSERT INTO unidade_conservacao_especie (unidade_conservacao, especie) VALUES
 ('0000.00.0011', 'Stenocraniops pampa'),
 ('0000.00.0012', 'Trichechus manatus');
 
+
 -- ==========================
 -- Pesquisas
 -- ==========================
@@ -270,7 +271,8 @@ INSERT INTO pesquisa (titulo, data_inicio, data_termino, objetivo, inst_responsa
 ('Impacto do Turismo na Avifauna Local', '2024-03-15', NULL, 'Analisar se o fluxo de visitantes nas trilhas altera o comportamento de nidificação de aves nativas.', 'UFPR'),
 ('Mapeamento de Fungos Medicinais do Cerrado', '2028-06-01', NULL, 'Identificar novas propriedades bioativas no Agaricus blazei e outros fungos locais.', 'Universidade de São Paulo (USP)'),
 ('Inventário Rápido da Flora Arbórea - Primavera 2025', '2025-10-10', '2025-10-10', 'Catalogar a floração simultânea de ipês-amarelos durante um evento específico.', 'Instituto Botânico de São Paulo'),
-('Ecofisiologia do Campo Sulino', '2026-01-05', NULL, 'Avaliar adaptação do Gafanhoto-do-pampa à queima controlada.', 'UFRGS');
+('Ecofisiologia do Campo Sulino', '2026-01-05', NULL, 'Avaliar adaptação do Gafanhoto-do-pampa à queima controlada.', 'UFRGS'),
+('Etologia do Tamanduá-Bandeira', '2025-06-01', NULL, 'Estudo comportamental em cativeiro e campo.', 'UnB');
 
 -- Pesquisa com data_inicio omitida (DEFAULT CURRENT_DATE), objetivo e inst_responsavel NULL (levantamento preliminar sem equipe definida)
 INSERT INTO pesquisa (titulo) VALUES ('Levantamento Preliminar da Ictiofauna do Pantanal');
@@ -290,7 +292,9 @@ INSERT INTO pesquisa_area_tematica (pesquisa, area_tematica) VALUES
 ('Impacto do Turismo na Avifauna Local', 'Uso Público'),
 ('Mapeamento de Fungos Medicinais do Cerrado', 'Micologia'),
 ('Inventário Rápido da Flora Arbórea - Primavera 2025', 'Botânica'),
-('Ecofisiologia do Campo Sulino', 'Entomologia');
+('Ecofisiologia do Campo Sulino', 'Entomologia'),
+('Etologia do Tamanduá-Bandeira', 'Etologia'),
+('Etologia do Tamanduá-Bandeira', 'Mamíferos');
 
 -- ==========================
 -- Pesquisadores por Pesquisa
@@ -304,7 +308,8 @@ INSERT INTO pesquisa_pesquisador (pesquisa, pesquisador) VALUES
 ('Monitoramento Populacional de Grandes Felinos', 2002),
 ('Impacto do Turismo na Avifauna Local', 2001),
 ('Mapeamento de Fungos Medicinais do Cerrado', 2002),
-('Ecofisiologia do Campo Sulino', 9002);
+('Ecofisiologia do Campo Sulino', 9002),
+('Etologia do Tamanduá-Bandeira', 3002);
 
 -- ==========================
 -- Espécies por Pesquisa
@@ -313,7 +318,9 @@ INSERT INTO pesquisa_especie (pesquisa, especie) VALUES
 ('Monitoramento da Onça-Pintada', 'Panthera onca'),
 ('Conservação do Cerrado', 'Caryocar brasiliense'),
 ('Uso Sustentável do Látex', 'Hevea brasiliensis'),
-('Ecofisiologia do Campo Sulino', 'Stenocraniops pampa');
+('Ecofisiologia do Campo Sulino', 'Stenocraniops pampa'),
+('Monitoramento Populacional de Grandes Felinos', 'Tapirus terrestris'),
+('Etologia do Tamanduá-Bandeira', 'Myrmecophaga tridactyla');
 
 -- ==========================
 -- Comunidades Tradicionais por Pesquisa
@@ -361,7 +368,8 @@ INSERT INTO observacao (biologo, ser_vivo, data_hora, metodo, descricao, unidade
 (2001, 30002, '2026-06-15 07:45:00', 'BINOCULO', 'Avistamento do indivíduo em atividade de forrageamento.', '0000.00.0002', 2),
 (2001, 10002, '2026-06-16 16:20:00', 'VISUAL', 'Avistamento direto durante patrulha preventiva.', '0000.00.0002', 2),
 (2001, 50007, '2026-06-17 09:00:00', 'CAMERA', 'Registro de um tamanduá-bandeira em processo de reabilitação.', '0000.00.0002', 2),
-(9003, 90002, '2026-06-17 11:30:00', 'VISUAL', 'Peixe-boi avistado na Baía Sueste respirando calmamente.', '0000.00.0012', 2);
+(9003, 90002, '2026-06-17 11:30:00', 'VISUAL', 'Peixe-boi avistado na Baía Sueste respirando calmamente.', '0000.00.0012', 2),
+(3002, 11002, '2026-05-10 10:00:00', 'VISUAL', 'Anta observada durante patrulha na zona de preservação.', '0000.00.0003', 1);
 
 -- Observação com metodo e descricao NULL (pesquisadora em campo sem equipamento disponível no momento)
 INSERT INTO observacao (biologo, ser_vivo, data_hora, unidade_conservacao, nro_zona)
@@ -397,36 +405,19 @@ VALUES ('0000.00.0003', 2, '2026-06-19 14:30:00', 3001);
 -- # CASOS DE BORDA DAS CONSULTAS
 -- #############################################################################
 
--- > Antiga Consulta 1 (relacionada a biologos e espécies em extinção D:)
--- Borda (filtro de pesquisadores >= 2): associa Tapirus terrestris (VU) a uma
--- pesquisa que já tem 2 pesquisadores (2001, 2002). Faz as observações via
--- CÂMERA dessa espécie passarem a contar (lado positivo do HAVING COUNT >= 2).
-INSERT INTO pesquisa_especie (pesquisa, especie) VALUES
-('Monitoramento Populacional de Grandes Felinos', 'Tapirus terrestris');
+-- ====================================================================
+-- Consulta 1: Funcionários com mais de uma categoria por UC.
+-- ====================================================================
 
--- Borda (filtro de pesquisadores < 2): pesquisa com APENAS 1 pesquisador
--- estudando Myrmecophaga tridactyla (VU). Garante que a observação via CÂMERA
--- do chip 50007 (biólogo 2001) NÃO conte (lado negativo do HAVING COUNT >= 2).
-INSERT INTO pesquisa (titulo, data_inicio, objetivo, inst_responsavel)
-VALUES ('Etologia do Tamanduá-Bandeira', '2025-06-01',
-        'Estudo comportamental em cativeiro e campo.', 'UnB');
+-- Borda (exatamente 1 categoria): funcionário com uma única categoria não
+-- satisfaz HAVING COUNT(*) > 1 — não entra em FUNCIONARIOS_VALIDOS. A UC
+-- 0013 já tem 10001 (0 categorias); com 10002 tendo 1 categoria, ela
+-- continua sem nenhum multicategórico e NÃO aparece na Consulta 1.
+INSERT INTO funcionario (nro_funcional, cpf, unidade_conservacao)
+VALUES (10002, '99900011122', '0000.00.0013');
 
-INSERT INTO pesquisa_area_tematica (pesquisa, area_tematica) VALUES
-('Etologia do Tamanduá-Bandeira', 'Etologia'),
-('Etologia do Tamanduá-Bandeira', 'Mamíferos');
-
-INSERT INTO pesquisa_pesquisador (pesquisa, pesquisador) VALUES
-('Etologia do Tamanduá-Bandeira', 3002);
-
-INSERT INTO pesquisa_especie (pesquisa, especie) VALUES
-('Etologia do Tamanduá-Bandeira', 'Myrmecophaga tridactyla');
-
--- Borda (filtro de método): observação por método VISUAL em espécie ameaçada
--- (Tapirus terrestris, VU). O biólogo 3002 não deve contar porque o filtro
--- exige metodo = 'CAMERA' — testa a rejeição por método.
-INSERT INTO observacao (biologo, ser_vivo, data_hora, metodo, descricao, unidade_conservacao, nro_zona)
-VALUES (3002, 11002, '2026-05-10 10:00:00', 'VISUAL',
-        'Anta observada durante patrulha na zona de preservação.', '0000.00.0003', 1);
+INSERT INTO funcionario_categoria (funcionario, categoria)
+VALUES (10002, 'GUIA');
 
 
 -- ====================================================================
@@ -480,6 +471,50 @@ VALUES ('0000.00.0002', 2, 204, '2026-06-22 09:00:00', 'EDUCATIVA', 3, 2002);
 
 
 -- ====================================================================
+-- Consulta 4: Espécies sem nenhum ser vivo registrado e suas pesquisas.
+-- ====================================================================
+
+-- Insere uma nova ESPÉCIE e uma nova PESQUISA associada a essa espécie
+INSERT INTO especie VALUES (
+    'Myxine glutinosa',
+    'Peixe-bruxa',
+    'Myxinidae',
+    'ANIMALIA',
+    'Myxiniformes',
+    'Myxini',
+    'Chordata',
+    'LC',
+    'Peixe primitivo sem mandíbula que secreta gosma sufocante para afastar predadores.'
+);
+
+INSERT INTO pesquisa VALUES (
+    'Estudo da Gosma do Peixe-Bruxa como Biomaterial',
+    '2026-01-15',
+    '2026-12-20',
+    'Analisar as propriedades elásticas e de resistência da secreção do Myxine glutinosa para aplicação em tecidos cirúrgicos.',
+    'Instituto de Biotecnologia Marinha'
+);
+
+INSERT INTO pesquisa_especie VALUES (
+  'Estudo da Gosma do Peixe-Bruxa como Biomaterial',
+  'Myxine glutinosa'
+);
+-- Até este ponto, essa espécie entra na query
+
+-- Inserimos um novo ser vivo dessa espécie, agora a query passa a ignorar essa espécie,
+-- visto que houve uma ocorrência
+INSERT INTO ser_vivo VALUES (
+  42891,
+  'Gisela',
+  'VIVO',
+  'Myxine glutinosa'
+);
+
+-- Caso queira checar, rode este delete no banco de dados e a query será alterada.
+-- DELETE FROM ser_vivo WHERE chip = 42891;
+
+
+-- ====================================================================
 -- Consulta 5: Pesquisas que estudam TODAS as espécies CR (divisão).
 -- Espécies CR nos dados: Trichechus manatus, Araucaria angustifolia.
 -- ====================================================================
@@ -522,8 +557,7 @@ INSERT INTO pesquisa_especie (pesquisa, especie) VALUES
 
 -- ---------------------------------------------------------------------------
 -- Casos de teste adicionais da Consulta 5 (divisão relacional).
--- "Todas as CR" é global: as espécies CR no dataset são
---   Trichechus manatus e Araucaria angustifolia.
+--  as espécies CR no dataset são Trichechus manatus e Araucaria angustifolia.
 -- ---------------------------------------------------------------------------
 
 -- Caso POSITIVO: cobre EXATAMENTE as 2 espécies CR. A diferença
