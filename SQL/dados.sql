@@ -422,7 +422,7 @@ VALUES (10002, 'GUIA');
 
 -- ====================================================================
 -- Consulta 2: Biólogos que NUNCA fizeram observação por câmera à noite.
--- Noite = EXTRACT(HOUR) >= 18 OU <= 5  (limites INCLUSIVOS).
+-- Noite = EXTRACT(HOUR) >= 18 OU <= 5h59  (limites INCLUSIVOS).
 -- ====================================================================
 
 -- Borda (limite inferior da noite, 18:00 inclusivo): observação via CÂMERA

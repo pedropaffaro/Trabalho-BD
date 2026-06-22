@@ -103,7 +103,7 @@ GROUP BY E.nome_cientifico, E.status_conservacao;
 | nome_cientifico | status_conservacao | qte_pesquisas |
 |---|---|---|
 | Agaricus blazei | DD | 0 |
-| Araucaria angustifolia | CR | 1 |
+| Araucaria angustifolia | CR | 3 |
 | Caryocar brasiliense | LC | 1 |
 | Handroanthus albus | LC | 0 |
 | Hevea brasiliensis | LC | 1 |

@@ -38,7 +38,7 @@ WHERE
             AND (
                 EXTRACT(HOUR FROM O.DATA_HORA) >= 18                   -- a partir das 18h, ou...
                 OR EXTRACT(HOUR FROM O.DATA_HORA) <= 5
-            )                -- ...até as 5h (período noturno)
+            )                -- ...até as 5h59 (período noturno)
     );
 
 -- ============================================================================
